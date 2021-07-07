@@ -1,1 +1,41 @@
-"Hello World" 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        //music = ['ido', 'noinaycoanh', 'nguoiamphu'];
+        //music = '/music/ido.mp3'
+        function startTime() {
+            var today = new Date();
+            var h = today.getHours();
+            var m = today.getMinutes();
+            var s = today.getSeconds();
+            m = checkTime(m);
+            s = checkTime(s);
+        	txt = "Time: " + h + ":" + m + ":" + s + "<br>" + "Date: " + today.getDate() + " - " + parseInt(today.getMonth()+1) + " - " + today.getFullYear();
+            document.getElementById('clock').innerHTML = txt;
+            var t = setTimeout(startTime, 500);
+        }
+        function checkTime(i) {
+            if (i < 10) {i = "0" + i};  // add zero in front of numbers < 10
+            return i;
+        }
+    </script>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="ie=edge">
+      <link rel="stylesheet" href="style.css">
+      <link rel="shortcut icon" type="image/png" href="img/favicon.png"/>
+      <title>My apps</title>
+</head>
+      
+<body onload="startTime()">
+     <div id="wrapper">
+           <h1>Demo my github page</h1>
+           <div id="clock-box">
+                <div id="clock"></div>
+            </div>
+            <footer>💕 Cảm ơn đã ghé thăm 💕</footer>
+      </div> 
+</body>
+</html>
