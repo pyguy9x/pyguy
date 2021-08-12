@@ -251,6 +251,7 @@ function loop() {
 
 window.onload = function () {
   document.querySelector('.row2').style.visibility = "hidden";
+  document.querySelector('.row2').innerHTML = "<h1>Chúc em </h1><h2>vui vẻ hạnh phúc nha!</h2>";
   var merrywrap = document.getElementById("merrywrap");
   var box = merrywrap.getElementsByClassName("giftbox")[0];
   var step = 1;
@@ -287,9 +288,9 @@ window.onload = function () {
 
 function reveal() {
   document.querySelector('.merrywrap').style.backgroundColor = 'transparent';  
+  document.querySelector('.row2').style.color = "magenta";
+  window.setTimeout(5000);  
   document.querySelector('.row2').style.visibility = "visible"; 
-  window.setTimeout(2000);
-  document.querySelector('.row2').style.color = "magenta";;
 
   loop();
 
