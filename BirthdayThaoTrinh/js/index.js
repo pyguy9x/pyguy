@@ -251,7 +251,7 @@ function loop() {
 
 window.onload = function () {
   document.querySelector('.row2').style.visibility = "hidden";
-  document.querySelector('.row2').innerHTML = "<h1>Chúc em </h1><h2>vui vẻ hạnh phúc nha!</h2>";
+  document.querySelector('.row2').innerHTML = "<h1>Chúc em </h1><img src='https://i.imgur.com/bu13IuT.png' width='30%' height='30%'><h2>vui vẻ hạnh phúc nha!</h2>";
   var merrywrap = document.getElementById("merrywrap");
   var box = merrywrap.getElementsByClassName("giftbox")[0];
   var step = 1;
