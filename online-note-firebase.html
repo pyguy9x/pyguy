@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lưu văn bản nội bộ</title>
+<style>
+:root {
+  --bg: #f4f5f7; --card: #fff; --text: #1f2933; --muted: #6b7785;
+  --line: #dde1e6; --accent: #b3261e; --accent-text: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #15181c; --card: #1e2227; --text: #e6e9ec; --muted: #8b95a1; --line: #2e343b; --accent: #e05a52; --accent-text: #15181c; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
+h1 { font-size: 1.3rem; margin: 0; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+input, textarea { width: 100%; font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; }
+textarea { min-height: 150px; resize: vertical; margin-top: 8px; }
+input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 8px; padding: 7px 14px; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+button.danger { color: var(--accent); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+.spacer { flex: 1; }
+.note h2 { font-size: 1.05rem; margin: 0; word-break: break-word; }
+.note .meta { color: var(--muted); font-size: .8rem; margin: 2px 0 8px; }
+.note pre { white-space: pre-wrap; word-break: break-word; font: inherit; margin: 0; }
+.empty { color: var(--muted); text-align: center; padding: 30px 0; }
+.top { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.top input { flex: 1; min-width: 160px; }
+.status { color: var(--muted); font-size: .85rem; }
+.hidden { display: none; }
+.setup ol { padding-left: 20px; }
+.setup code { background: var(--bg); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Hiện khi chưa cấu hình -->
+  <div id="setup" class="card setup hidden">
+    <h1>Chưa cấu hình</h1>
+    <p>Mở file này, điền <code>DB_URL</code> và <code>SECRET</code> ở đầu phần &lt;script&gt;. Xem hướng dẫn tạo Firebase trong phần trả lời.</p>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="top">
+      <h1>Lưu văn bản nội bộ</h1>
+      <input id="search" type="search" placeholder="Tìm kiếm...">
+    </div>
+
+    <div class="card">
+      <input id="title" placeholder="Tiêu đề (không bắt buộc)" maxlength="200">
+      <textarea id="text" placeholder="Nhập nội dung cần lưu..."></textarea>
+      <div class="row">
+        <button class="primary" id="saveBtn">Lưu</button>
+        <button id="cancelBtn" class="hidden">Hủy sửa</button>
+        <span class="status" id="status"></span>
+      </div>
+    </div>
+
+    <div id="list"></div>
+  </div>
+</div>
+
+<script>
+// ====== CẤU HÌNH ======
+// Địa chỉ Realtime Database, ví dụ: https://ten-du-an-default-rtdb.asia-southeast1.firebasedatabase.app
+const DB_URL = 'https://hung-da4c1-default-rtdb.asia-southeast1.firebasedatabase.app';
+// Chuỗi bí mật dài, khó đoán (chỉ gồm chữ và số). Ai biết chuỗi này mới đọc/ghi được dữ liệu.
+const SECRET = 'n1junWHLK8idWSCSnRDBqk8giJj9YTP4';
+// ======================
+
+const $ = id => document.getElementById(id);
+const base = () => DB_URL.replace(/\/+$/, '') + '/notes/' + encodeURIComponent(SECRET);
+let notes = [];
+let editingId = '';
+
+async function req(method, path, body) {
+  const r = await fetch(base() + path + '.json', {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+function fmt(iso) {
+  try { return new Date(iso).toLocaleString('vi-VN'); } catch (e) { return iso; }
+}
+
+function render() {
+  const q = $('search').value.trim().toLowerCase();
+  const box = $('list');
+  box.innerHTML = '';
+  const shown = notes.filter(n => !q || ((n.title || '') + ' ' + (n.text || '')).toLowerCase().includes(q));
+  if (!shown.length) {
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.textContent = notes.length ? 'Không tìm thấy nội dung phù hợp.' : 'Chưa có nội dung nào được lưu.';
+    box.appendChild(d);
+    return;
+  }
+  shown.forEach(n => {
+    const c = document.createElement('div');
+    c.className = 'card note';
+    const h = document.createElement('h2');
+    h.textContent = n.title || '(Không có tiêu đề)';
+    const m = document.createElement('div');
+    m.className = 'meta';
+    m.textContent = 'Lưu: ' + fmt(n.created) + (n.updated !== n.created ? ' · Sửa: ' + fmt(n.updated) : '');
+    const p = document.createElement('pre');
+    p.textContent = n.text || '';
+    const r = document.createElement('div');
+    r.className = 'row';
+    const copy = document.createElement('button');
+    copy.textContent = 'Sao chép';
+    copy.onclick = async () => {
+      try { await navigator.clipboard.writeText(n.text || ''); copy.textContent = 'Đã chép'; }
+      catch (e) { copy.textContent = 'Không chép được'; }
+      setTimeout(() => copy.textContent = 'Sao chép', 1500);
+    };
+    const edit = document.createElement('button');
+    edit.textContent = 'Sửa';
+    edit.onclick = () => startEdit(n);
+    const sp = document.createElement('span');
+    sp.className = 'spacer';
+    const del = document.createElement('button');
+    del.textContent = 'Xóa';
+    del.className = 'danger';
+    del.onclick = () => remove(n);
+    r.append(copy, edit, sp, del);
+    c.append(h, m, p, r);
+    box.appendChild(c);
+  });
+}
+
+async function load() {
+  $('status').textContent = 'Đang tải...';
+  try {
+    const data = await req('GET', '');
+    notes = Object.entries(data || {})
+      .map(([id, v]) => ({ id, ...v }))
+      .sort((a, b) => (b.created || '').localeCompare(a.created || ''));
+    render();
+    $('status').textContent = '';
+  } catch (e) {
+    $('status').textContent = 'Không tải được dữ liệu. Kiểm tra DB_URL và quy tắc (Rules) của Firebase.';
+  }
+}
+
+function startEdit(n) {
+  editingId = n.id;
+  $('title').value = n.title || '';
+  $('text').value = n.text || '';
+  $('saveBtn').textContent = 'Cập nhật';
+  $('cancelBtn').classList.remove('hidden');
+  $('text').focus();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetForm() {
+  editingId = '';
+  $('title').value = '';
+  $('text').value = '';
+  $('saveBtn').textContent = 'Lưu';
+  $('cancelBtn').classList.add('hidden');
+}
+
+async function save() {
+  const title = $('title').value.trim(), text = $('text').value;
+  if (!title && !text.trim()) { $('status').textContent = 'Chưa có nội dung.'; return; }
+  $('status').textContent = 'Đang lưu...';
+  const now = new Date().toISOString();
+  try {
+    if (editingId) {
+      await req('PATCH', '/' + editingId, { title, text, updated: now });
+    } else {
+      await req('POST', '', { title, text, created: now, updated: now });
+    }
+    resetForm();
+    await load();
+    $('status').textContent = 'Đã lưu.';
+    setTimeout(() => $('status').textContent = '', 2000);
+  } catch (e) { $('status').textContent = 'Lưu không thành công.'; }
+}
+
+async function remove(n) {
+  if (!confirm('Xóa nội dung này?')) return;
+  try {
+    await req('DELETE', '/' + n.id);
+    if (editingId === n.id) resetForm();
+    await load();
+  } catch (e) { $('status').textContent = 'Xóa không thành công.'; }
+}
+
+$('saveBtn').onclick = save;
+$('cancelBtn').onclick = resetForm;
+$('search').oninput = render;
+$('text').addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') save(); });
+
+if (!DB_URL || !SECRET) {
+  $('setup').classList.remove('hidden');
+} else {
+  $('app').classList.remove('hidden');
+  load();
+}
+</script>
+</body>
+</html>
