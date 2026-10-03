@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quản lý hồ sơ đảng viên – Rà soát</title>
+<style>
+  :root { --do:#b91c1c; --xanh:#15803d; --nen:#f8fafc; --vien:#d1d5db; --chu:#1f2937; --mo:#6b7280; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 "Segoe UI",Arial,sans-serif; background:var(--nen); color:var(--chu); }
+  header { background:linear-gradient(90deg,#b91c1c,#dc2626); color:#fff; padding:14px 20px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:2px 0 0; font-size:12px; opacity:.9; }
+  main { max-width:1280px; margin:0 auto; padding:14px; }
+  .the { background:#fff; border:1px solid var(--vien); border-radius:10px; padding:12px 14px; margin-bottom:12px; }
+  .hang { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  input, select, button { font:inherit; padding:6px 9px; border:1px solid var(--vien); border-radius:6px; background:#fff; }
+  button { cursor:pointer; font-weight:600; }
+  button.chinh { background:var(--do); border-color:var(--do); color:#fff; }
+  button.xanh { background:var(--xanh); border-color:var(--xanh); color:#fff; }
+  button.nho { padding:3px 8px; font-size:12px; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .tong { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-bottom:12px; }
+  .o { background:#fff; border:1px solid var(--vien); border-radius:10px; padding:10px 12px; }
+  .o b { display:block; font-size:22px; }
+  .o span { font-size:12px; color:var(--mo); }
+  .o.can b { color:var(--do); } .o.tot b { color:var(--xanh); }
+  .tabs { display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap; }
+  .tabs button { border-radius:6px 6px 0 0; }
+  .tabs button.on { background:var(--do); color:#fff; border-color:var(--do); }
+  table { width:100%; border-collapse:collapse; background:#fff; }
+  th, td { border:1px solid var(--vien); padding:6px 8px; text-align:left; vertical-align:top; }
+  th { background:#f1f5f9; position:sticky; top:0; z-index:1; cursor:pointer; white-space:nowrap; }
+  tr.hs { cursor:pointer; } tr.hs:hover { background:#fef2f2; }
+  .nhan { display:inline-block; padding:1px 7px; border-radius:10px; font-size:12px; font-weight:600; white-space:nowrap; }
+  .nhan.chua { background:#e5e7eb; color:#374151; } .nhan.tu { background:#fef3c7; color:#92400e; }
+  .nhan.xong { background:#dcfce7; color:#166534; } .nhan.tay { background:#ede9fe; color:#5b21b6; }
+  .nhan.trung { background:#fee2e2; color:#991b1b; }
+  .ct { background:#fffbeb; }
+  .ct td { padding:10px 14px; }
+  .muc { display:flex; gap:8px; align-items:flex-start; padding:4px 0; border-bottom:1px dashed #e5e7eb; }
+  .muc.da { opacity:.5; text-decoration:line-through; }
+  .muc small { color:var(--mo); display:block; text-decoration:none; }
+  .loai { font-size:11px; font-weight:700; padding:1px 6px; border-radius:4px; background:#fee2e2; color:#991b1b; white-space:nowrap; }
+  .loai.md { background:#e0f2fe; color:#075985; } .loai.loi { background:#fef3c7; color:#92400e; }
+  .nhom { border:2px solid var(--vien); border-radius:10px; margin-bottom:10px; background:#fff; }
+  .nhom h3 { margin:0; padding:8px 12px; background:#fef2f2; font-size:14px; border-radius:8px 8px 0 0; }
+  .nhom.bo { opacity:.55; }
+  .thongbao { padding:8px 12px; border-radius:6px; margin:8px 0; font-size:13px; }
+  .thongbao.ok { background:#dcfce7; color:#166534; } .thongbao.loi { background:#fee2e2; color:#991b1b; }
+  .mo { color:var(--mo); font-size:12px; }
+  @media (max-width:700px){ th:nth-child(n+6), td:nth-child(n+6){ display:none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Quản lý hồ sơ đảng viên – Rà soát</h1>
+  <p>Trang dành cho team rà soát: theo dõi hồ sơ đã nhập, các mục AI cân nhắc/chưa điền, và lọc hồ sơ trùng.</p>
+</header>
+<main>
+  <div class="the">
+    <div class="hang">
+      <input id="secret" type="password" placeholder="Mã bí mật cơ sở dữ liệu" style="width:220px">
+      <input id="nguoi" placeholder="Tên người rà soát" style="width:200px">
+      <button class="chinh" id="tai">⟳ Tải dữ liệu</button>
+      <button id="xuatDs">⬇ Xuất danh sách (CSV)</button>
+      <button id="xuatMuc">⬇ Xuất các mục rà soát (CSV)</button>
+      <span class="mo" id="lanTai"></span>
+    </div>
+    <div id="tb"></div>
+  </div>
+
+  <div class="tong" id="tong"></div>
+
+  <div class="tabs">
+    <button data-tab="ds" class="on">Tất cả hồ sơ</button>
+    <button data-tab="rs">Cần rà soát</button>
+    <button data-tab="trung">Hồ sơ trùng <span id="slTrung"></span></button>
+  </div>
+
+  <div id="locKhu" class="the">
+    <div class="hang">
+      <input id="tim" placeholder="Tìm theo tên, CCCD, mã, người nhập…" style="flex:1;min-width:220px">
+      <select id="loTT">
+        <option value="">Mọi trạng thái</option>
+        <option value="chua">Chưa nhập</option>
+        <option value="tu">Đã nhập tự động – chờ rà soát</option>
+        <option value="xong">Đã rà soát</option>
+      </select>
+      <select id="loNguoi"><option value="">Mọi người nhập</option></select>
+      <label><input type="checkbox" id="loTay"> Chỉ văn bản viết tay</label>
+      <label><input type="checkbox" id="loCon"> Chỉ hồ sơ còn mục chưa xử lý</label>
+    </div>
+  </div>
+
+  <div id="khuDs"></div>
+  <div id="khuTrung" hidden></div>
+</main>
+
+<script>
+const FB_URL = 'https://hung-da4c1-default-rtdb.asia-southeast1.firebasedatabase.app';
+let DS = [];          // hồ sơ gộp từ dsHoSo + rasoat
+let RS = {};          // rasoat theo id
+let KHONG_TRUNG = {}; // nhóm đã đánh dấu "không phải trùng"
+let tabHienTai = 'ds', sapXep = { k: 'capNhatMs', xuoi: false }, moId = null;
+const $ = (id) => document.getElementById(id);
+const el = (tag, props = {}, ...con) => { const e = document.createElement(tag); Object.assign(e, props); con.forEach((c) => e.append(c)); return e; };
+const khongDau = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').toLowerCase().replace(/\s+/g, ' ').trim();
+const luuLS = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const docLS = (k) => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+$('secret').value = docLS('ql_secret'); $('nguoi').value = docLS('ql_nguoi');
+$('secret').onchange = () => luuLS('ql_secret', $('secret').value.trim());
+$('nguoi').onchange = () => luuLS('ql_nguoi', $('nguoi').value.trim());
+
+function thongBao(t, lop) { $('tb').innerHTML = ''; if (t) $('tb').append(el('div', { className: 'thongbao ' + (lop || 'ok'), textContent: t })); }
+async function fb(method, path, body) {
+  const secret = $('secret').value.trim();
+  if (!secret) throw new Error('Chưa nhập mã bí mật.');
+  const r = await fetch(`${FB_URL}/${path}.json?auth=${encodeURIComponent(secret)}`, { method, headers: body === undefined ? {} : { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const t = await r.text();
+  if (!r.ok) { let m = t; try { m = JSON.parse(t).error || t; } catch (e) {} throw new Error(r.status === 401 || /permission|auth/i.test(m) ? 'Sai mã bí mật hoặc không có quyền.' : `Lỗi máy chủ ${r.status}: ${m}`); }
+  return t ? JSON.parse(t) : null;
+}
+// "15:30:12 3/10/2026" (giờ vi-VN) hoặc ISO → mili giây
+function msCua(s) {
+  if (!s) return 0;
+  const m = String(s).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?[ ,]+(\d{1,2})\/(\d{1,2})\/(\d{4})/) || null;
+  if (m) return new Date(+m[6], +m[5] - 1, +m[4], +m[1], +m[2], +(m[3] || 0)).getTime();
+  const t = Date.parse(s); return isNaN(t) ? 0 : t;
+}
+const mang = (a) => (Array.isArray(a) ? a : Object.values(a || {})).filter(Boolean);
+
+async function taiDuLieu() {
+  $('tai').disabled = true; thongBao('Đang tải…', 'ok');
+  try {
+    luuLS('ql_secret', $('secret').value.trim());
+    const [ds, rs, kt] = await Promise.all([fb('GET', 'dsHoSo'), fb('GET', 'rasoat'), fb('GET', 'quanly/khongTrung').catch(() => null)]);
+    RS = rs || {}; KHONG_TRUNG = kt || {};
+    DS = Object.entries(ds || {}).map(([id, x]) => {
+      const r = RS[id] || {}, mucs = mang(r.dsMuc), xong = r.xong || {};
+      const conLai = mucs.filter((_, i) => !xong[i]).length;
+      const daNhap = x.trangThai === 'đã nhập tự động' || !!r.daDong;
+      const daRaSoat = /đã rà soát/i.test(r.trangThai || '');
+      return { id, ten: x.ten || r.ten || '', cccd: x.cccd || r.cccd || '', ngaySinh: x.ngaySinh || '', nguoiNhap: x.nguoiNhap || '', capNhat: x.capNhat || '', capNhatMs: msCua(x.capNhat),
+        vietTay: !!x.vietTay, soCT: x.soCongTac || 0, soNT: x.soNguoiThan || 0, mucs, xong, conLai, coRs: !!r.dsMuc,
+        tt: daRaSoat ? 'xong' : daNhap ? 'tu' : 'chua', nguoiRaSoat: r.nguoiRaSoat || '', raSoatLuc: r.raSoatLuc || '', thongKe: r.thongKe || x.thongKeRaSoat || null };
+    });
+    // Hồ sơ có trong rasoat nhưng không còn trong dsHoSo: bỏ qua
+    const ng = [...new Set(DS.map((d) => d.nguoiNhap).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));
+    const giu = $('loNguoi').value;
+    $('loNguoi').innerHTML = '<option value="">Mọi người nhập</option>'; ng.forEach((n) => $('loNguoi').append(el('option', { value: n, textContent: n }))); $('loNguoi').value = giu;
+    $('lanTai').textContent = 'Tải lúc ' + new Date().toLocaleTimeString('vi-VN');
+    thongBao(`Đã tải ${DS.length} hồ sơ.`, 'ok');
+    ve();
+  } catch (e) { thongBao('Lỗi: ' + e.message, 'loi'); }
+  finally { $('tai').disabled = false; }
+}
+$('tai').onclick = taiDuLieu;
+
+// ---------- Tìm hồ sơ trùng ----------
+function timTrung() {
+  const nhom = [], dung = new Set();
+  const them = (loai, khoa, ds) => {
+    if (ds.length < 2) return;
+    const ids = ds.map((d) => d.id).sort();
+    if (ids.every((i) => dung.has(i))) return; // đã nằm trong nhóm mạnh hơn
+    ids.forEach((i) => dung.add(i));
+    nhom.push({ loai, khoa: loai + ':' + khoa, ds });
+  };
+  const theo = (f) => { const m = new Map(); DS.forEach((d) => { const k = f(d); if (k) (m.get(k) || m.set(k, []).get(k)).push(d); }); return m; };
+  for (const [k, ds] of theo((d) => (/^\d{12}$/.test(String(d.cccd).replace(/\D/g, '')) ? String(d.cccd).replace(/\D/g, '') : ''))) them('Trùng số căn cước', k, ds);
+  for (const [k, ds] of theo((d) => (d.ten && d.ngaySinh ? khongDau(d.ten) + '|' + d.ngaySinh : ''))) them('Trùng họ tên + ngày sinh', k, ds);
+  for (const [k, ds] of theo((d) => (d.ten ? khongDau(d.ten) : ''))) them('Trùng họ tên (cần kiểm tra)', k, ds);
+  nhom.forEach((g) => { g.bo = !!KHONG_TRUNG[g.khoa.replace(/[.#$\[\]/]/g, '_')]; });
+  return nhom;
+}
+// Bản nên giữ: đã nhập tự động > nhiều dữ liệu hơn > cập nhật gần nhất
+function nenGiu(ds) {
+  return [...ds].sort((a, b) => (b.tt !== 'chua') - (a.tt !== 'chua') || (b.soCT + b.soNT) - (a.soCT + a.soNT) || b.capNhatMs - a.capNhatMs)[0];
+}
+
+// ---------- Vẽ giao diện ----------
+const NHAN_TT = { chua: ['Chưa nhập', 'chua'], tu: ['Đã nhập tự động – chờ rà soát', 'tu'], xong: ['Đã rà soát', 'xong'] };
+function locDs() {
+  const q = khongDau($('tim').value), tt = $('loTT').value, ng = $('loNguoi').value, tay = $('loTay').checked, con = $('loCon').checked;
+  let ds = DS.filter((d) => (!q || khongDau(`${d.ten} ${d.cccd} ${d.id} ${d.nguoiNhap}`).includes(q)) && (!tt || d.tt === tt) && (!ng || d.nguoiNhap === ng) && (!tay || d.vietTay) && (!con || d.conLai > 0));
+  if (tabHienTai === 'rs') ds = ds.filter((d) => d.coRs && d.conLai > 0 && d.tt !== 'xong');
+  const { k, xuoi } = sapXep, h = xuoi ? 1 : -1;
+  return ds.sort((a, b) => (typeof a[k] === 'string' ? a[k].localeCompare(b[k], 'vi') : a[k] - b[k]) * h);
+}
+function ve() {
+  const trung = timTrung(), trungConLai = trung.filter((g) => !g.bo);
+  $('slTrung').textContent = trungConLai.length ? `(${trungConLai.length})` : '';
+  const tongMuc = DS.reduce((s, d) => s + d.conLai, 0);
+  const o = (so, nhan, lop = '') => el('div', { className: 'o ' + lop }, el('b', { textContent: String(so) }), el('span', { textContent: nhan }));
+  $('tong').innerHTML = '';
+  $('tong').append(o(DS.length, 'Tổng số hồ sơ'), o(DS.filter((d) => d.tt === 'chua').length, 'Chưa nhập'),
+    o(DS.filter((d) => d.tt === 'tu').length, 'Đã nhập tự động – chờ rà soát', 'can'), o(DS.filter((d) => d.tt === 'xong').length, 'Đã rà soát xong', 'tot'),
+    o(tongMuc, 'Mục còn cần rà soát', 'can'), o(DS.filter((d) => d.vietTay).length, 'Văn bản viết tay'), o(trungConLai.length, 'Nhóm hồ sơ trùng', 'can'));
+  $('locKhu').hidden = tabHienTai === 'trung';
+  $('khuDs').hidden = tabHienTai === 'trung'; $('khuTrung').hidden = tabHienTai !== 'trung';
+  if (tabHienTai === 'trung') veTrung(trung); else veDs();
+}
+function veDs() {
+  const box = $('khuDs'); box.innerHTML = '';
+  const ds = locDs();
+  const cot = [['ten', 'Họ và tên'], ['cccd', 'CCCD / mã'], ['ngaySinh', 'Ngày sinh'], ['nguoiNhap', 'Người nhập'], ['capNhatMs', 'Cập nhật'], ['tt', 'Trạng thái'], ['conLai', 'Cần rà soát']];
+  const tb = el('table'), tr = el('tr');
+  cot.forEach(([k, t]) => tr.append(el('th', { textContent: t + (sapXep.k === k ? (sapXep.xuoi ? ' ▲' : ' ▼') : ''), onclick: () => { sapXep = { k, xuoi: sapXep.k === k ? !sapXep.xuoi : true }; ve(); } })));
+  tb.append(el('thead', {}, tr));
+  const body = el('tbody');
+  ds.forEach((d) => {
+    const [ntt, lop] = NHAN_TT[d.tt];
+    const r = el('tr', { className: 'hs', onclick: () => { moId = moId === d.id ? null : d.id; ve(); } });
+    const tenO = el('td', {}, el('b', { textContent: d.ten || '(chưa có họ tên)' }));
+    if (d.vietTay) tenO.append(' ', el('span', { className: 'nhan tay', textContent: '✍ viết tay' }));
+    const tk = d.coRs ? `${d.conLai}/${d.mucs.length} mục` : (d.tt === 'chua' ? '—' : 'chưa có danh sách');
+    r.append(tenO, el('td', { textContent: d.cccd || d.id }), el('td', { textContent: d.ngaySinh }), el('td', { textContent: d.nguoiNhap }), el('td', { textContent: d.capNhat }),
+      el('td', {}, el('span', { className: 'nhan ' + lop, textContent: ntt })), el('td', { textContent: tk }));
+    body.append(r);
+    if (moId === d.id) body.append(chiTiet(d, cot.length));
+  });
+  if (!ds.length) body.append(el('tr', {}, el('td', { colSpan: cot.length, className: 'mo', textContent: DS.length ? 'Không có hồ sơ phù hợp bộ lọc.' : 'Chưa có dữ liệu. Nhập mã bí mật rồi bấm Tải dữ liệu.' })));
+  tb.append(body);
+  box.append(el('div', { className: 'mo', textContent: `Hiển thị ${ds.length}/${DS.length} hồ sơ` }), tb);
+}
+const CLASS_LOAI = (l) => (/mặc định|xem lại|Giữ dữ liệu cũ/i.test(l) ? 'md' : /Chưa|lỗi|Mục chưa/i.test(l) ? 'loi' : '');
+function chiTiet(d, soCot) {
+  const td = el('td', { colSpan: soCot });
+  td.onclick = (e) => e.stopPropagation();
+  td.append(el('div', {}, el('b', { textContent: `${d.ten} · ${d.cccd || d.id}` }), ` · ${d.soCT} dòng công tác · ${d.soNT} người thân · mã ${d.id}`));
+  if (d.tt === 'xong') td.append(el('div', { className: 'mo', textContent: `Đã rà soát bởi ${d.nguoiRaSoat || '?'} lúc ${d.raSoatLuc || '?'}` }));
+  if (!d.coRs) td.append(el('div', { className: 'mo', textContent: 'Hồ sơ này chưa chạy tự động nên chưa có danh sách rà soát.' }));
+  d.mucs.forEach((m, i) => {
+    const da = !!d.xong[i];
+    const cb = el('input', { type: 'checkbox', checked: da, title: 'Đã xử lý mục này' });
+    cb.onchange = async () => {
+      try { await fb('PATCH', `rasoat/${encodeURIComponent(d.id)}/xong`, { [i]: cb.checked ? { nguoi: $('nguoi').value.trim() || '?', luc: new Date().toLocaleString('vi-VN') } : null }); d.xong[i] = cb.checked ? true : undefined; d.conLai = d.mucs.filter((_, j) => !d.xong[j]).length; ve(); }
+      catch (e) { cb.checked = !cb.checked; thongBao('Không ghi được: ' + e.message, 'loi'); }
+    };
+    td.append(el('div', { className: 'muc' + (da ? ' da' : '') }, cb, el('div', {},
+      el('span', { className: 'loai ' + CLASS_LOAI(m.loai), textContent: m.loai }), ' ', el('b', { textContent: `${(m.muc || '').replace(/^B\d+ /, '')} – ${m.truong}` }),
+      el('small', { textContent: `${m.giaTri ? 'Giá trị đã điền: ' + m.giaTri + ' · ' : ''}${m.ghiChu || ''}` }))));
+  });
+  const nut = el('div', { className: 'hang', style: 'margin-top:8px' });
+  if (d.coRs) {
+    if (d.tt === 'xong') nut.append(el('button', { textContent: '↺ Mở lại để rà soát', onclick: () => datTT(d, 'đã nhập tự động – chờ rà soát') }));
+    else nut.append(el('button', { className: 'xanh', textContent: '✔ Đánh dấu đã rà soát xong', onclick: () => { if (d.conLai && !confirm(`Còn ${d.conLai} mục chưa tick. Vẫn đánh dấu đã rà soát xong?`)) return; datTT(d, 'đã rà soát'); } }));
+    nut.append(el('button', { textContent: '⬇ Xuất mục rà soát (CSV)', onclick: () => csvMuc([d]) }));
+  }
+  td.append(nut);
+  return el('tr', { className: 'ct' }, td);
+}
+async function datTT(d, tt) {
+  try {
+    const x = { trangThai: tt };
+    if (tt === 'đã rà soát') { x.nguoiRaSoat = $('nguoi').value.trim() || '?'; x.raSoatLuc = new Date().toLocaleString('vi-VN'); }
+    await fb('PATCH', `rasoat/${encodeURIComponent(d.id)}`, x);
+    d.tt = tt === 'đã rà soát' ? 'xong' : 'tu'; d.nguoiRaSoat = x.nguoiRaSoat || ''; d.raSoatLuc = x.raSoatLuc || '';
+    thongBao(`Đã cập nhật trạng thái hồ sơ ${d.ten}.`, 'ok'); ve();
+  } catch (e) { thongBao('Không ghi được: ' + e.message, 'loi'); }
+}
+
+// ---------- Hồ sơ trùng ----------
+function veTrung(nhom) {
+  const box = $('khuTrung'); box.innerHTML = '';
+  const hien = nhom.filter((g) => !g.bo), bo = nhom.filter((g) => g.bo);
+  box.append(el('div', { className: 'the' }, 'Tiêu chí: trùng số căn cước 12 số; trùng họ tên + ngày sinh; trùng họ tên (chỉ để kiểm tra, có thể là hai người khác nhau). ',
+    'Bản đề xuất giữ: đã nhập tự động trước, rồi bản có nhiều dữ liệu hơn, rồi bản cập nhật gần nhất. Xóa là xóa vĩnh viễn trên đám mây.'));
+  if (!hien.length) box.append(el('div', { className: 'thongbao ok', textContent: DS.length ? 'Không có nhóm hồ sơ trùng nào cần xử lý.' : 'Chưa có dữ liệu.' }));
+  hien.forEach((g) => box.append(veNhom(g)));
+  if (bo.length) {
+    const sec = el('details', {}, el('summary', { textContent: `${bo.length} nhóm đã đánh dấu "không phải trùng"` }));
+    bo.forEach((g) => sec.append(veNhom(g)));
+    box.append(sec);
+  }
+}
+function veNhom(g) {
+  const giu = nenGiu(g.ds);
+  const sec = el('div', { className: 'nhom' + (g.bo ? ' bo' : '') }, el('h3', { textContent: `${g.loai} – ${g.ds[0].ten} (${g.ds.length} bản)` }));
+  const tb = el('table'), tr = el('tr');
+  ['Giữ', 'Mã', 'Họ và tên', 'CCCD', 'Ngày sinh', 'Công tác / Người thân', 'Người nhập', 'Cập nhật', 'Trạng thái'].forEach((t) => tr.append(el('th', { textContent: t })));
+  tb.append(el('thead', {}, tr));
+  const body = el('tbody'), chon = { id: giu.id };
+  g.ds.forEach((d) => {
+    const rd = el('input', { type: 'radio', name: 'giu_' + g.khoa, checked: d.id === giu.id, onchange: () => (chon.id = d.id) });
+    body.append(el('tr', {}, el('td', {}, rd), el('td', { textContent: d.id }), el('td', { textContent: d.ten }), el('td', { textContent: d.cccd }), el('td', { textContent: d.ngaySinh }),
+      el('td', { textContent: `${d.soCT} / ${d.soNT}` }), el('td', { textContent: d.nguoiNhap }), el('td', { textContent: d.capNhat }), el('td', {}, el('span', { className: 'nhan ' + NHAN_TT[d.tt][1], textContent: NHAN_TT[d.tt][0] }))));
+  });
+  tb.append(body); sec.append(tb);
+  const nut = el('div', { className: 'hang', style: 'padding:8px 12px' });
+  nut.append(el('button', { className: 'chinh', textContent: 'Giữ bản đã chọn, xóa các bản còn lại', onclick: () => xoaTrung(g, chon.id) }));
+  nut.append(el('button', { textContent: g.bo ? 'Đánh dấu lại là trùng' : 'Không phải trùng', onclick: () => datKhongTrung(g, !g.bo) }));
+  sec.append(nut);
+  return sec;
+}
+const khoaFb = (k) => k.replace(/[.#$\[\]/]/g, '_');
+async function datKhongTrung(g, v) {
+  try { await fb('PATCH', 'quanly/khongTrung', { [khoaFb(g.khoa)]: v ? { nguoi: $('nguoi').value.trim() || '?', luc: new Date().toLocaleString('vi-VN') } : null }); if (v) KHONG_TRUNG[khoaFb(g.khoa)] = true; else delete KHONG_TRUNG[khoaFb(g.khoa)]; ve(); }
+  catch (e) { thongBao('Không ghi được: ' + e.message, 'loi'); }
+}
+async function xoaTrung(g, giuId) {
+  const xoa = g.ds.filter((d) => d.id !== giuId);
+  if (!xoa.length) return;
+  const giu = g.ds.find((d) => d.id === giuId);
+  if (!confirm(`GIỮ: ${giu.ten} (mã ${giu.id})\n\nXÓA VĨNH VIỄN ${xoa.length} bản:\n` + xoa.map((d) => `• ${d.ten} (mã ${d.id}, ${d.nguoiNhap || '?'}, ${d.capNhat || '?'})`).join('\n') + '\n\nTiếp tục?')) return;
+  try {
+    const pt = {};
+    xoa.forEach((d) => { const i = encodeURIComponent(d.id); pt['dsHoSo/' + i] = null; pt['hoso/' + i] = null; pt['rasoat/' + i] = null; });
+    await fb('PATCH', '', pt);
+    DS = DS.filter((d) => !xoa.some((x) => x.id === d.id));
+    thongBao(`Đã xóa ${xoa.length} bản trùng, giữ lại ${giu.ten} (mã ${giu.id}).`, 'ok'); ve();
+  } catch (e) { thongBao('Không xóa được: ' + e.message, 'loi'); }
+}
+
+// ---------- Xuất CSV ----------
+function taiCsv(ten, dong) {
+  const o = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const blob = new Blob(['\ufeff' + dong.map((r) => r.map(o).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = el('a', { href: URL.createObjectURL(blob), download: ten }); a.click();
+}
+const TT_TXT = { chua: 'Chưa nhập', tu: 'Đã nhập tự động – chờ rà soát', xong: 'Đã rà soát' };
+$('xuatDs').onclick = () => {
+  const ds = locDs();
+  taiCsv('danh_sach_ho_so.csv', [['Họ và tên', 'CCCD', 'Mã', 'Ngày sinh', 'Người nhập', 'Cập nhật', 'Trạng thái', 'Viết tay', 'Mục cần rà soát còn lại', 'Tổng mục rà soát'],
+    ...ds.map((d) => [d.ten, d.cccd, d.id, d.ngaySinh, d.nguoiNhap, d.capNhat, TT_TXT[d.tt], d.vietTay ? 'Có' : '', d.conLai, d.mucs.length])]);
+};
+function csvMuc(ds) {
+  const dong = [['Họ và tên', 'CCCD', 'Mục', 'Trường', 'Loại', 'Giá trị đã điền', 'Ghi chú', 'Đã xử lý']];
+  ds.forEach((d) => d.mucs.forEach((m, i) => dong.push([d.ten, d.cccd || d.id, m.muc, m.truong, m.loai, m.giaTri, m.ghiChu, d.xong[i] ? 'x' : ''])));
+  taiCsv('muc_ra_soat.csv', dong);
+}
+$('xuatMuc').onclick = () => csvMuc(locDs().filter((d) => d.coRs));
+
+document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => { tabHienTai = b.dataset.tab; document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === b)); ve(); }));
+['tim', 'loTT', 'loNguoi', 'loTay', 'loCon'].forEach((i) => ($(i).oninput = $(i).onchange = ve));
+if ($('secret').value) taiDuLieu(); else ve();
+</script>
+</body>
+</html>
