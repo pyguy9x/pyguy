@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><link rel="stylesheet" href="popup.css"></head>
+<body>
+<header>Điền hồ sơ đảng viên <span>thử nghiệm · 5 trường</span></header>
+<main>
+  <label>Loại đảng viên
+    <select id="officialStatus">
+      <option value="">— Bỏ qua —</option>
+      <option>Đảng viên chính thức</option>
+      <option>Đảng viên dự bị</option>
+    </select></label>
+  <label>Phân loại đối tượng
+    <select id="securityClassification">
+      <option value="">— Bỏ qua —</option>
+      <option value="Không thuộc nhóm đối tượng có vấn đề về lịch sử chính trị và diện Bộ Chính trị, Ban Bí thư quản lý">Không thuộc nhóm đối tượng có vấn đề về LSCT…</option>
+      <option>Có vấn đề về chính trị</option>
+    </select></label>
+  <label>Tổ chức đảng đang sinh hoạt chính thức
+    <input id="activityOfficialOrgId" placeholder="Tên hoặc mã, VD: Chi bộ các Cơ quan Đảng"></label>
+  <div class="row">
+    <label>Số lý lịch <input id="profileNumber" placeholder="8 hoặc 9 ký tự"></label>
+    <label>Số thẻ đảng <input id="cardNumber" placeholder="Bỏ trống nếu dự bị"></label>
+  </div>
+  <div class="btns">
+    <button id="dien" class="primary">Điền vào trang</button>
+    <button id="xoa">Xóa ô nhập</button>
+  </div>
+  <div id="kq"></div>
+  <p class="note">Tiện ích không tự bấm Lưu. Kiểm tra lại trên trang trước khi lưu.</p>
+</main>
+<script src="popup.js"></script>
+</body></html>

@@ -1,0 +1,32 @@
+ỨNG DỤNG ĐIỀN TỰ ĐỘNG HỒ SƠ ĐẢNG VIÊN – BẢN THỬ NGHIỆM (5 TRƯỜNG ĐẦU)
+=====================================================================
+Các trường đã hỗ trợ:
+  1. Loại đảng viên (Đảng viên chính thức / Đảng viên dự bị)
+  2. Phân loại đối tượng
+  3. Tổ chức đảng đang sinh hoạt chính thức (gõ tên hoặc mã, VD: "Chi bộ các Cơ quan Đảng" hoặc "15.CS023.CB002")
+  4. Số lý lịch
+  5. Số thẻ đảng
+
+YÊU CẦU MÁY: Windows 10/11, đã cài Google Chrome hoặc Microsoft Edge,
+             Python 3.10 trở lên (python.org, khi cài nhớ tích "Add Python to PATH").
+
+CÀI ĐẶT (một lần): giải nén thư mục, bấm đúp CAI_DAT.bat.
+
+SỬ DỤNG:
+  1. Bấm đúp CHAY_APP.bat -> cửa sổ ứng dụng hiện ra.
+  2. Bấm "1. Mở trình duyệt" -> ứng dụng mở một cửa sổ Chrome riêng.
+     Đăng nhập Hệ thống CSDL Đảng viên trong cửa sổ này, mở trang Thêm mới hồ sơ đảng viên.
+     (Phiên đăng nhập được giữ trong thư mục du_lieu_trinh_duyet; ứng dụng không lưu mật khẩu.)
+  3. Nhập dữ liệu vào các ô của ứng dụng, HOẶC:
+     - "Tạo tệp Excel mẫu" -> điền mỗi hồ sơ một dòng từ dòng 3 (không xóa dòng 1, 2);
+     - "Nạp dữ liệu từ Excel" -> chọn một dòng trong danh sách.
+  4. Bấm "2. Điền vào trang". Nhật ký báo ✔/✘ từng trường kèm giá trị đọc lại trên trang.
+  5. Kiểm tra trên trang rồi TỰ BẤM "Lưu & tiếp tục". Ứng dụng không tự lưu.
+
+ĐÓNG GÓI THÀNH .EXE (tùy chọn, để chạy trên máy không cài Python):
+  Bấm đúp DONG_GOI_EXE.bat trên máy đã cài đặt -> tệp exe trong dist\DienHoSoDangVien\.
+
+LƯU Ý BẢO MẬT: tệp Excel chứa thông tin đảng viên phải được quản lý theo quy định
+bảo vệ dữ liệu cá nhân và bảo vệ bí mật nội bộ của Đảng; xóa tệp sau khi nhập xong,
+không gửi qua mạng xã hội, không để trên máy dùng chung. Không xóa thư mục
+du_lieu_trinh_duyet khi đang dùng; xóa thư mục này khi muốn đăng xuất hẳn.

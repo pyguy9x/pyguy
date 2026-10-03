@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Điền hồ sơ đảng viên (thử nghiệm)",
+  "version": "0.1.0",
+  "description": "Điền tự động 5 trường đầu trang Thêm mới hồ sơ đảng viên – Hệ thống CSDL Đảng viên.",
+  "permissions": ["scripting", "activeTab", "storage"],
+  "host_permissions": ["https://tcxdd.dcs.vn/*"],
+  "action": { "default_popup": "popup.html", "default_title": "Điền hồ sơ đảng viên", "default_icon": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" } },
+  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" }
+}

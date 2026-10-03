@@ -1,0 +1,20 @@
+TIỆN ÍCH CHROME "ĐIỀN HỒ SƠ ĐẢNG VIÊN" – BẢN THỬ NGHIỆM (5 TRƯỜNG ĐẦU)
+
+CÀI ĐẶT
+ 1. Giải nén tệp zip ra một thư mục cố định (VD: D:\TienIch\DienHoSoDangVien). Không xóa thư mục này sau khi cài.
+ 2. Mở Chrome, gõ vào thanh địa chỉ: chrome://extensions
+ 3. Bật "Chế độ dành cho nhà phát triển" (Developer mode) ở góc trên bên phải.
+ 4. Bấm "Tải tiện ích đã giải nén" (Load unpacked) -> chọn thư mục vừa giải nén.
+ 5. Bấm biểu tượng mảnh ghép trên thanh công cụ -> ghim tiện ích "Điền hồ sơ đảng viên".
+
+SỬ DỤNG
+ 1. Đăng nhập Hệ thống CSDL Đảng viên, mở trang Thêm mới hồ sơ đảng viên.
+ 2. Bấm biểu tượng tiện ích, nhập dữ liệu, bấm "Điền vào trang".
+ 3. Kết quả từng trường hiện ngay trong tiện ích (✔ kèm giá trị đọc lại trên trang / ✘ kèm lý do).
+ 4. Kiểm tra trên trang rồi tự bấm "Lưu & tiếp tục". Tiện ích không tự lưu.
+
+LƯU Ý
+ - Tổ chức đảng: gõ tên ("Chi bộ các Cơ quan Đảng") hoặc mã ("15.CS023.CB002").
+ - Số lý lịch: trang yêu cầu 8 hoặc 9 ký tự.
+ - Đảng viên dự bị: trang ẩn ô Số thẻ đảng, để trống ô này.
+ - Tiện ích chỉ chạy trên tcxdd.dcs.vn, chỉ nhớ tên tổ chức đảng nhập lần trước; không lưu số lý lịch, số thẻ.

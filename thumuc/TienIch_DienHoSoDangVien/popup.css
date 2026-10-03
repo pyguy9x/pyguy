@@ -1,0 +1,17 @@
+*{box-sizing:border-box}
+body{width:380px;margin:0;font:13px/1.4 "Segoe UI",Arial,sans-serif;color:#1f2328;background:#fff}
+header{background:#c8102e;color:#fff;padding:10px 14px;font-weight:600;font-size:14px}
+header span{display:block;font-weight:400;font-size:11px;opacity:.85}
+main{padding:12px 14px}
+label{display:block;margin-bottom:9px;font-weight:600;font-size:12px;color:#444}
+input,select{display:block;width:100%;margin-top:3px;padding:6px 8px;border:1px solid #c9ccd1;border-radius:6px;font:inherit;color:#1f2328;background:#fff}
+input:focus,select:focus{outline:2px solid #c8102e33;border-color:#c8102e}
+.row{display:flex;gap:10px}.row label{flex:1}
+.btns{display:flex;gap:8px;margin:6px 0 10px}
+button{flex:1;padding:8px;border-radius:6px;border:1px solid #c9ccd1;background:#f6f7f8;font:inherit;font-weight:600;cursor:pointer}
+button.primary{background:#c8102e;border-color:#c8102e;color:#fff}
+button:disabled{opacity:.6;cursor:wait}
+#kq div{padding:4px 0;border-bottom:1px solid #eee;font-size:12px}
+#kq .ok b{color:#1a7f37}#kq .err b{color:#c8102e}
+#kq small{display:block;color:#666;word-break:break-word}
+.note{margin:10px 0 0;font-size:11px;color:#777}
