@@ -1,0 +1,2469 @@
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/.gitignore repo/vanphongsomaua-main/.gitignore
+--- .gitignore	2026-10-03 06:37:43.217515579 +0000
++++ .gitignore	2026-10-03 06:42:30.660828824 +0000
+@@ -24,4 +24,14 @@
+ 
+ # Log
+ *.log
+-!.opencode/plugins/notify-done/
+\ No newline at end of file
++!.opencode/plugins/notify-done/
++
++# --- Bí mật & tệp sinh ra (thêm sau rà soát bảo mật) ---
++node_modules/
++backup-*.json
++*.bak
++legacy_old.js
++supabase_seed_tokens.sql
++md/TEST_*REPORT.md
++.env.local
++.vercel/
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/CONTEXT.md repo/vanphongsomaua-main/CONTEXT.md
+--- CONTEXT.md	2026-10-03 06:37:43.217619697 +0000
++++ CONTEXT.md	2026-10-03 06:42:30.967951067 +0000
+@@ -6,8 +6,8 @@
+ - KPI MTTQ: dữ liệu Unicode đã nạp lại đúng; `index.html` tải subset `vietnamese`, CSS dùng fallback `Segoe UI/system-ui`.
+ - KPI MTTQ: có drill-down từ từng dòng, thẻ sắp hạn 3/7 ngày và biểu đồ cột chồng theo cán bộ/trạng thái; không đổi schema 3 bảng.
+ - KPI MTTQ: biểu đồ cán bộ/trạng thái dùng cột ngang (`indexAxis: 'y'`) để đọc tên cán bộ dài dễ hơn.
+-- KPI MTTQ token: Admin dùng token hiện tại `ADM-MAUA-adm`; cán bộ dùng scope `mttq`, chỉ được sửa/xóa nhiệm vụ có tên mình và được thêm nhiệm vụ mới. Token được khai báo đồng bộ ở `js/legacy.js` và `api/admin.js`.
+-- `CQ-MAUA-TVH1-MTTQ` có cờ `mttqAdmin`: toàn quyền trong workspace KPI MTTQ, không được nâng quyền sang các workspace khác.
++- KPI MTTQ token: Admin dùng token hiện tại `<ADMIN_TOKEN>`; cán bộ dùng scope `mttq`, chỉ được sửa/xóa nhiệm vụ có tên mình và được thêm nhiệm vụ mới. Token được khai báo đồng bộ ở `js/legacy.js` và `api/admin.js`.
++- `CQ-MAUA-***` có cờ `mttqAdmin`: toàn quyền trong workspace KPI MTTQ, không được nâng quyền sang các workspace khác.
+ - TT/BTV: nếu đã nhập `Ngày hoàn thành`, trạng thái tự động so sánh với Hạn hoàn thành; không tiếp tục báo Quá hạn chỉ vì chưa có sản phẩm/file.
+ - Tỉnh giao biểu đồ Thời hạn xử lý: nhóm `Sắp đến hạn trong 7 ngày` tính từ hôm nay đến +7 ngày; drill-down dùng cùng điều kiện; nhóm vẫn hiển thị khi bằng 0.
+ - Tỉnh giao biểu đồ `Theo tên lãnh đạo cơ quan`: biểu đồ số 2 lấy tên từ `.pp-leader-row [data-k=name]`, drill-down lọc đúng task; không dùng placeholder `Chưa rõ cơ quan chủ trì`. Biểu đồ số 4 giữ `Số nhiệm vụ` theo cơ quan.
+@@ -19,7 +19,7 @@
+ - Sidebar: User và Sắp đến hạn nằm dưới logo; User hiển thị họ tên và chức vụ thành 2 dòng.
+ - VPUB: Cơ quan phụ trách, Cơ quan phối hợp và Lãnh đạo cơ quan phụ trách dùng dropdown; mục Khác của lãnh đạo yêu cầu nhập tên lãnh đạo.
+ - VPUB: ngày tháng nhập `dd/mm/yyyy`, lưu về `yyyy-mm-dd`; cột Cơ quan phối hợp khớp trường `field`, lãnh đạo khớp `leader`.
+-- Phân quyền: token `CQ-MAUA-CV` được phép xóa nhiệm vụ trong workspace VPUB.
++- Phân quyền: token `CQ-MAUA-***` được phép xóa nhiệm vụ trong workspace VPUB.
+ - `js/config.js` là cấu hình riêng, không đồng bộ/ghi đè khi cập nhật sang bản sao dự án.
+ 
+ ## Kiến trúc
+@@ -47,8 +47,8 @@
+ 6. Popup xác nhận thêm mới (`#addConfirmModal`) luôn z-index cao nhất 999999.
+ 
+ ## Phân quyền Token
+-- `Admin`: full quyền, xem nhật ký, xóa log (cần pass `2095`), gửi TB (`Gui TB`).
+-- `CQ-MAUA-CV` (CV nhập liệu, `scope: data_entry`, login staff như local): sửa TT/BTV + Tỉnh bảng cũ + cây Tỉnh giao (5 trường/agency, không thêm/xóa cấu trúc) + KH100/VPUB (trừ Ghi chú Admin, chỉ cập nhật không xóa), NHƯNG khóa Nội dung nhiệm vụ + Hạn hoàn thành (chỉ Admin, cả UI lẫn payload). Chặn Văn phòng + BCH + Nhật ký. Check token TRƯỚC DEPARTMENT_TOKENS; click Văn phòng → redirect TT/BTV.
++- `Admin`: full quyền, xem nhật ký, xóa log (cần xác nhận bằng token Admin), gửi TB (`Gui TB`).
++- `CQ-MAUA-***` (CV nhập liệu, `scope: data_entry`, login staff như local): sửa TT/BTV + Tỉnh bảng cũ + cây Tỉnh giao (5 trường/agency, không thêm/xóa cấu trúc) + KH100/VPUB (trừ Ghi chú Admin, chỉ cập nhật không xóa), NHƯNG khóa Nội dung nhiệm vụ + Hạn hoàn thành (chỉ Admin, cả UI lẫn payload). Chặn Văn phòng + BCH + Nhật ký. Check token TRƯỚC DEPARTMENT_TOKENS; click Văn phòng → redirect TT/BTV.
+ - Token cơ quan `CQ-MAUA-*` (19 token `scope: action100`): VPDU, UBND=`UBND`, UBNDXA/`UBND xã`, BANXDD=`Ban Xây dựng Đảng`, MTTQ, HDND, CBCONGAN=`Công an xã`, CBQUANSU=`Quân sự xã`, UBKT, TTCT=`Trung tâm Chính trị`, KTHT=`Phòng Kinh Tế hạ tầng`, PVH=`Phòng văn hóa`, HCC=`Trung tâm DV HCC`, DVTH-CVE61=`Trung tâm Dịch vụ tổng hợp`, DTXD-8LX74F=`BQL dự án đầu tư xây dựng`, NNMT-CV=`Phòng NN và MT`, TYTLD/TYTCV=`Trạm Y tế`, UBNDXA2=`UBND xã`): `role: department`, `scope: action100`, truy cập KH 100 ngày + Tỉnh giao cây (`province_plan_blocks`) để test (mở `openPROVWorkspace:5999` cho `action100`). Khớp tên không dấu (`ppNorm`/`canEditAction100Task:6481` + bỏ `CB/CQ`, `includes` 2 chiều) — vd `Công an xã`/`Cong an` đều khớp `Công an`.
+ - `CQ-VPUB-MAUA`: xem BCH, TT/BTV, Tinh giao, KH 100 ngày, tự thêm ở VPUB. Không xem Văn phòng.
+ - `CB-MAUA-*`: token cá nhân 15 ký tự, xem/sửa theo người phụ trách.
+@@ -57,14 +57,14 @@
+ ## Task hiện tại
+ - Ghi nhật ký Admin (writeActivity) cho mọi workspace: BCH/TT/BTV/Tỉnh giao/KH100/VPUB gồm Thêm, Sửa, Xóa nhiệm vụ, Xóa/Duyệt file.
+ - Nút "Thêm nhiệm vụ" chỉ hiện cho ai có quyền thêm; bấm tự mở workspace tương ứng + scroll tới form thêm.
+-- CQ-MAUA-CV: thêm/sửa/xóa nhiệm vụ chỉ trong TT/BTV, mở toàn quyền sửa như admin tại BTV (trừ Ghi chú Admin). Check token TRƯỚC DEPARTMENT_TOKENS; click Văn phòng → redirect TT/BTV.
++- CQ-MAUA-***: thêm/sửa/xóa nhiệm vụ chỉ trong TT/BTV, mở toàn quyền sửa như admin tại BTV (trừ Ghi chú Admin). Check token TRƯỚC DEPARTMENT_TOKENS; click Văn phòng → redirect TT/BTV.
+ - Nút Gia hạn ở cột Thao tác nhiệm vụ Văn phòng: chỉ hiện khi nhiệm vụ có trạng thái `Quá hạn` và là Admin.
+ - VPUB: workspace riêng, 12 trường, đơn vị chọn: KT, VH, CA, QS, HCC, DVTH, VP; lịch sử cũ trong `archive.md`.
+ - TT/BTV: biểu đồ tròn "Theo cơ quan chủ trì" nhóm theo `role||unit_name`, đủ tổng nhiệm vụ; popup drill có nút Xuất CSV; hover tên nhiệm vụ hiện popup nội dung (class `task-tip`); có trường "Nguồn giao" (lưu cột `amount`) ở form thêm/cập nhật; hiện tooltip cuộn nội dung khi quá dài (không còn thanh cuộn kẹt trong tooltip).
+ - Tỉnh giao: bảng hiển thị 10 cột cố định (STT, Nhiệm vụ cụ thể, Cơ quan tham mưu, Lãnh đạo UBND, Hạn, Ngày hoàn thành, Thời gian còn lại, Tiến độ, Trạng thái, Sản phẩm); bỏ Thẩm quyền, bảng `prov-wide` + cuộn ngang, hover tooltip; modal xác nhận tự đóng (tránh double-add); `<textarea>` cho Sản phẩm/Lý do/Nhiệm vụ kèm hover tooltip.
+ 
+ - KH 100 ngày: Trạng thái luôn tính lại (bỏ `x.status` cũ); Số ngày còn lại = deadline-completed hoặc today-deadline; non-admin chỉ sửa Ngày hoàn thành/Sản phẩm/Ghi chú.
+-- TT/BTV: token `CB-MAUA-DMC-724CD3` (Đinh Mạnh Cường) sửa được Ghi chú cán bộ khi `officer_name` khớp; bỏ check `scope===ttbtv`.
++- TT/BTV: token `CB-MAUA-***` (Đinh Mạnh Cường) sửa được Ghi chú cán bộ khi `officer_name` khớp; bỏ check `scope===ttbtv`.
+ - Giao diện: focus `#6d28d9`; Báo cáo xuống cuối; Cảnh báo chỉ Admin; Tỉnh giao cây Kế hoạch mỗi người 1 trạng thái, có tóm tắt khi thu gọn (tên+mô tả+SL cơ quan+hạn).
+ - Kế hoạch: Nhiệm vụ lớn + Mô tả ngắn; mỗi Cơ quan có Tên (khi khác) + Nhiệm vụ cụ thể; mỗi người có Hạn/Ngày HT/Còn lại/Tiến độ/Trạng thái/Sản phẩm/Lý do riêng, LĐ PCM tùy biến.
+ - Lưu: `province_plan_blocks` (`stt, van_ban_tinh/xa, nhiem_vu, blocks:{mota, agencies:[{agency,type,agencyTask,persons,pcmList}]}`), Sửa/Xem theo quyền, F5 thu gọn tất cả và hiện tóm tắt.
+@@ -134,7 +134,7 @@
+ - KH 100 ngày bộ lọc Cơ quan (28/08): `#action100Agency` distinct `commune_leader`/`unit_name`, `populateAction100AgencyFilter:6348`, lọc không dấu `renderAction100Table:6355`, `open` cho `action100`.
+ - BCH lọc Tên cán bộ (28/08): `#bchOfficerNameFilter` text `bchFold` `officer_name` includes, `applyBCHFilters:3132` + `resetBCHFilters:3852` + `renderBCHCharts:3200`.
+ - Tỉnh giao scope100 hạn chế (28/08, fix 28/08 per-agency): `ppNorm/ppScope100CanEditTask/ppCanEditProvinceTask:7118` khớp cơ quan chính/phối hợp không dấu; `ppSyncTaskRoleUI:7154` chỉ hiện `Lưu`/`Sửa` (ẩn `Xóa`) và `+LĐ PCM` per-agency `ppScope100CanEditAgency`; `ppEditTask:7114`/`ppAddPCM:6771`/`ppTogglePCMList`/`ppSaveOne:7480`/`ppDeleteTask:6811` cho phép hạn chế 5 trường `Tên/ngày HT/sản phẩm/tiến độ/lý do` **chỉ trong agency khớp** (Trạm Y tế không sửa được phối hợp khác); `openPROVWorkspace:5999` mở cho `action100`.
+-- Token `CQ-MAUA-BANXDD` đổi `Ban XDD`→`Ban Xây dựng Đảng` (`js/legacy.js:22`); `CQ-MAUA-UBNDXA` chuẩn hoá `UBND xã`; thêm `CQ-MAUA-UBND`=`UBND` để test cả `UBND`/`UBND xã`.
++- Token `CQ-MAUA-***` đổi `Ban XDD`→`Ban Xây dựng Đảng` (`js/legacy.js:22`); `CQ-MAUA-***` chuẩn hoá `UBND xã`; thêm `CQ-MAUA-***`=`UBND` để test cả `UBND`/`UBND xã`.
+ - Trang chủ (28/08): bar `Tổng số nhiệm vụ` 430→260px `horizontal bar` (`indexAxis y`), `home-bottom-grid 1.6fr/1fr/1fr` + 2 biểu đồ `line` (Tỷ lệ trạng thái, fill+tension) + `polarArea` (Top cơ quan); Top cơ quan thêm `KH100`/`VPUB` (`KH100_TASKS_CACHE`/`VPUB_TASKS_CACHE` + bg fetch, `homeSource`/`homeSourceKey`/`homeStatus`/`getAllHomeTasks`/`homeFilterSource`/`homeFilteredTasks`/`homeFilterAgency` option, `renderAgencyTotalsChart:1484`).
+ - BCH drill popup (28/08): `bchDrillOfficerFilter` (search) + `bchDrillOfficerSelect` (dropdown) + `bchDrillStatusFilter` (`bchStatusGroup`), `onBCHDrillFilterChange:3333` kết hợp, `renderBCHDrill:3449` populate distinct + clear khi mở (`index.html:752`).
+ - Fix Đ/đ + per-agency (28/08): `ppNorm` Đ→D, `ppInitials`/`ppTokenInit` cho `VPDU`↔`Văn phòng Đảng ủy`/`VPĐU`, `canEditAction100Task:6506` + `renderAction100Table:6373` agency filter, `ppSyncTaskRoleUI` per-agency `Trạm Y tế` chỉ sửa ag khớp.
+@@ -143,7 +143,7 @@
+ - Cảnh báo + Sắp đến hạn (28/08): nút `🔔 Sắp đến hạn (x)` (`notifBtn`) trên `Đăng xuất` hiện với mọi token, mở popup `Nhiệm vụ sắp đến hạn` (`openDailyWarnModal`) lọc theo `Phụ trách` (`isOwnedByToken` khớp `owner/officer_name` theo `scope`; a100 `canEditAction100Task`/`commune_leader`, vpub `unit/field/leader`); `updateNotifCount` async dùng `refreshDailyWarnTasks` → `DAILY_SOON_TASKS.length` khớp popup. `refreshDailyWarnTasks:6648` `soonEnd +7` ngày, mục `⚠️ Cảnh báo` (`warnSidebarItem`) chỉ hiện admin + staff·office; non-admin ẩn cột `Email nhận TB` + nút `Gửi tất cả`. `openDailyWarnModal` popup 944px, cột Hạn `dd-mm-yyyy`.
+ - Nhật ký hoạt động (28/08): `openActivityLog:138` thêm class `activity-log-mode` + `activity-log-table`; `css/style.css:8042` grid 1104px, filter 3 cột, table fixed (56/12/12/14/50/84%), ghi chú `line-clamp:5`, badge thao tác `data-full` tooltip `.task-tip-popup` (bỏ ngưỡng 40), `showDrill` gỡ class để dùng chung `#drillModal`.
+ - Fix chuẩn hóa + office_officers (02/09): `normalizeTask:1759` alias `deadline`/`deadline_date`, nới lỏng ngưỡng ký tự; `confirmAddTask:2751`/`confirmNewBCH/TTBTV/PROV:3549/4486/5625` fallback `task_name/officer/deadline` từ pending trước normalize + tạo `fb` nếu Supabase trả thiếu; thêm bảng `office_officers(id,name,token,title,unit)` giữ RLS + 4 policy permissive (select/insert/update/delete using true).
+-- Fix token F5 + gỡ offline + sidebar (03/09): `initAuth:522` fix `ADMIN_TOKEN` undefined → `"ADM-MAUA-adm"`, khôi phục nhanh từ `vp_demo_user` cache, giữ phiên khi mạng lỗi; `setLoggedInUser:374`/`logoutUser:504` dùng `safeLS`; `js/main.js` bỏ `lz-string`, `sw.js` tự hủy cache `vps-maua-v1`; xóa `offlineBanner/Queue` `index.html` + CSS; xóa `#sidebarCollapseBtn` thu gọn (sidebar luôn hiện); `node --check` pass.
++- Fix token F5 + gỡ offline + sidebar (03/09): `initAuth:522` fix `ADMIN_TOKEN` undefined → `"<ADMIN_TOKEN>"`, khôi phục nhanh từ `vp_demo_user` cache, giữ phiên khi mạng lỗi; `setLoggedInUser:374`/`logoutUser:504` dùng `safeLS`; `js/main.js` bỏ `lz-string`, `sw.js` tự hủy cache `vps-maua-v1`; xóa `offlineBanner/Queue` `index.html` + CSS; xóa `#sidebarCollapseBtn` thu gọn (sidebar luôn hiện); `node --check` pass.
+ - Vinh danh BCH quý + xóa SW (03/09): `updateGlobalHonors:1143` đổi tháng→quý, BCH tính tổng NV quý (`leaderMap.total`) thay vì hoàn thành; `index.html:243`/`index-fix.html:262` label `có nhiều nhiệm vụ nhất trong Quý`; xóa hẳn `sw.js` + gỡ offline hoàn toàn; `node --check` pass.
+ - Vinh danh tháng/quý (04/09): cá nhân VP tính trong tháng (`isOfficeInCurrentMonth`, popup `Vinh danh tháng M/YYYY`, subtitle `Vinh danh trong tháng`); BCH tính NV hoàn thành nhiều nhất quý (`done>0`, sort done→total, popup chỉ NV hoàn thành, nhãn `có nhiều nhiệm vụ hoàn thành nhất trong quý hiện tại`).
+ - SW killer (04/09): `sw.js` killer tự xóa cache `vps-maua-*` + unregister (xóa file không gỡ được SW cũ); `legacy.js` gỡ dự phòng khi tải trang; chống cache `?v=20260906` (`main.js`→`legacy.js`, `index.html`→`main.js`+`style.css`).
+@@ -174,7 +174,7 @@
+ - 1 Edge Function: functions/v1/send-email (Resend) - headers apikey+Bearer anonKey, Prefer return=representation/minimal
+ 
+ ## RBAC & Cache (giữ nguyên khi bảo trì)
+-- 29 token BCH (HDA/PXS/CCS full, 19 broad, 7 bch-only) + 23 token action100 (19 CQ department + 4 STAFF_ACTION100_TOKENS LTT/TAT/DNC/NGN) — CQ-MAUA-UBND mới
++- 29 token BCH (HDA/PXS/CCS full, 19 broad, 7 bch-only) + 23 token action100 (19 CQ department + 4 STAFF_ACTION100_TOKENS LTT/TAT/DNC/NGN) — CQ-MAUA-*** mới
+ - 17 key localStorage: vp_demo_user/token, vp_tasks_cache, bch_*_cache, ttbtv_*_cache, province_*_cache, user_email, deadline_email_last_sent, last_overdue_alert_date, provinceOldListHidden
+ - Test mỗi sửa: tạo TEST_*_YYYYMMDD 3 trạng thái (Hoàn thành đúng hạn/quá hạn/Quá hạn) → POST/PATCH/GET/DELETE 200 → DELETE dọn, như 26/08 đã pass.
+ 
+@@ -189,12 +189,12 @@
+ + Còn lỗi: không
+ 
+ ## Cập nhật phiên 2026-09-15
+-+ Đã làm: Khóa Nội dung + Hạn chỉ Admin sửa toàn workspace, ẩn lỗi 400/401 F12, highlight nhãn TT/BTV; BCH đổi `Chức vụ`→`Kết quả/Sản phẩm` khớp `bchEditProduct` + `Kết quả`→`File đính kèm` (`Có file đính kèm`/trống), cập nhật map 9619 dòng; Mức 2 chặn DevTools nhẹ (F12/Ctrl+Shift+I/Ctrl+U toast, chặn contextmenu #authGate) + mã hóa localStorage `_vp_t` btoa-reverse giữ trơn tru, làm mờ fallback `ADM-MAUA-adm` join; Thêm mục 🔐 Set role trong Tiện ích (chỉ Admin) - popup liệt kê token từ 5 bảng officers + Admin, mở rộng 24 checkbox quyền (Xem/Thêm/Sửa/Xóa × 6 workspace), auto-detect quyền hiện có theo role+scope (`computeDefaultPerms`), đánh dấu cam khi admin sửa khác mặc định; lưu `localStorage` `vp_token_multiscope` cấu trúc `{token:{ws:{v,a,e,d}}}`, áp dụng qua `applyTokenMultiScope` ở `setLoggedInUser` gắn `_perms` vào user; `syncUserWorkspaceVisibility` check `userCan(user,"view",wsId)` cho extra scopes; `userCan(user, action, wsId)` dùng chung; `canEditAction100Task` + `deleteAction100Task` ưu tiên `userCan(CURRENT_USER, "edit"/"delete", wsId)` ở đầu → khi admin tick Sửa/Xóa VPUB cho token (vd NGN) thì bypass check khớp tên/cơ quan, sửa/xóa được mọi nhiệm vụ trong workspace đó; Lưu server `role_overrides` (Supabase) để mọi trình duyệt đều thấy: `api/admin.js` thêm `get/save_role_overrides`, login trả `_perms`/`_extraScopes` cho token, `js/legacy.js` đồng bộ `fetch/saveServerOverrides`, `supabase_seed_tokens.sql` tạo bảng `role_overrides(token pk, perms jsonb)`; Gộp 3 token Sầm/Sẩm Thị Lê/Lệ Khuyên thành 1: giữ `CB-MAUA-STK-B104F1` (`Sẩm Thị Lệ Khuyên`), xóa `CB-MAUA-STK-CE6011`/`CB-MAUA-STK-DBA7A2` trong `province_officers`, Tỉnh giao 23→21 token; VP thêm trạng thái Thường xuyên: `calculateTaskStatus`/`canonicalStatus`/`dbStatus`/`statusBadgeClass` hỗ trợ `Thường xuyên`, token Văn phòng (scope office) + Admin tick được (checkbox `addOfficeRegular`/`editOfficeRegular`), nhiệm vụ Thường xuyên giữ nguyên sang tháng sau (bypass `applyFilters`/`officePerformanceRows` date filter), `colors` + `ownerStatusMap` + `statusFilter`/`officePerformanceStatus` thêm Thường xuyên
+++ Đã làm: Khóa Nội dung + Hạn chỉ Admin sửa toàn workspace, ẩn lỗi 400/401 F12, highlight nhãn TT/BTV; BCH đổi `Chức vụ`→`Kết quả/Sản phẩm` khớp `bchEditProduct` + `Kết quả`→`File đính kèm` (`Có file đính kèm`/trống), cập nhật map 9619 dòng; Mức 2 chặn DevTools nhẹ (F12/Ctrl+Shift+I/Ctrl+U toast, chặn contextmenu #authGate) + mã hóa localStorage `_vp_t` btoa-reverse giữ trơn tru, làm mờ fallback `<ADMIN_TOKEN>` join; Thêm mục 🔐 Set role trong Tiện ích (chỉ Admin) - popup liệt kê token từ 5 bảng officers + Admin, mở rộng 24 checkbox quyền (Xem/Thêm/Sửa/Xóa × 6 workspace), auto-detect quyền hiện có theo role+scope (`computeDefaultPerms`), đánh dấu cam khi admin sửa khác mặc định; lưu `localStorage` `vp_token_multiscope` cấu trúc `{token:{ws:{v,a,e,d}}}`, áp dụng qua `applyTokenMultiScope` ở `setLoggedInUser` gắn `_perms` vào user; `syncUserWorkspaceVisibility` check `userCan(user,"view",wsId)` cho extra scopes; `userCan(user, action, wsId)` dùng chung; `canEditAction100Task` + `deleteAction100Task` ưu tiên `userCan(CURRENT_USER, "edit"/"delete", wsId)` ở đầu → khi admin tick Sửa/Xóa VPUB cho token (vd NGN) thì bypass check khớp tên/cơ quan, sửa/xóa được mọi nhiệm vụ trong workspace đó; Lưu server `role_overrides` (Supabase) để mọi trình duyệt đều thấy: `api/admin.js` thêm `get/save_role_overrides`, login trả `_perms`/`_extraScopes` cho token, `js/legacy.js` đồng bộ `fetch/saveServerOverrides`, `supabase_seed_tokens.sql` tạo bảng `role_overrides(token pk, perms jsonb)`; Gộp 3 token Sầm/Sẩm Thị Lê/Lệ Khuyên thành 1: giữ `CB-MAUA-***` (`Sẩm Thị Lệ Khuyên`), xóa `CB-MAUA-***`/`CB-MAUA-***` trong `province_officers`, Tỉnh giao 23→21 token; VP thêm trạng thái Thường xuyên: `calculateTaskStatus`/`canonicalStatus`/`dbStatus`/`statusBadgeClass` hỗ trợ `Thường xuyên`, token Văn phòng (scope office) + Admin tick được (checkbox `addOfficeRegular`/`editOfficeRegular`), nhiệm vụ Thường xuyên giữ nguyên sang tháng sau (bypass `applyFilters`/`officePerformanceRows` date filter), `colors` + `ownerStatusMap` + `statusFilter`/`officePerformanceStatus` thêm Thường xuyên
+ + File đổi: `index.html`, `js/legacy.js`, `css/style.css`, `CONTEXT.md`, `CHANGES.md`, `js/dev-map.js`
+ + Còn lỗi: không
+ 
+ ## Cập nhật phiên 2026-09-16
+-+ Đã làm: Cho token NGN (`CB-MAUA-NGN-88KQBY`) quyền ADD/Sửa nhiệm vụ BCH và Gia hạn task BCH quá hạn; fix lỗi PGRST2047 do bảng `tasks` thiếu cột `is_extended`
+++ Đã làm: Cho token NGN (`CB-MAUA-***`) quyền ADD/Sửa nhiệm vụ BCH và Gia hạn task BCH quá hạn; fix lỗi PGRST2047 do bảng `tasks` thiếu cột `is_extended`
+ + File đổi: `js/legacy.js`
+ + Còn lỗi: không
+ 
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/api/admin.js repo/vanphongsomaua-main/api/admin.js
+--- api/admin.js	2026-10-03 06:37:43.217733735 +0000
++++ api/admin.js	2026-10-03 06:38:13.885712195 +0000
+@@ -1,191 +1,277 @@
+-// /api/admin.js - xác thực token qua Supabase (4 bảng chính), không hardcode token thật trong source
+-// Token thật lưu ở 4 bảng: officers, tt_btv_officers, province_officers, office_officers (giữ nguyên data cũ, chỉ thêm nếu thiếu)
+-// Fallback demo: ADM-MAUA-adm (giữ theo yêu cầu), còn lại phải nằm trong DB hoặc env TOKENS_JSON (không commit)
++// /api/admin.js — xác thực token và quản lý Set role (chạy phía máy chủ Vercel)
++//
++// Biến môi trường BẮT BUỘC trên Vercel (Settings > Environment Variables):
++//   SUPABASE_URL                 địa chỉ dự án Supabase
++//   SUPABASE_SERVICE_ROLE_KEY    khóa service_role (KHÔNG dùng khóa anon thay thế)
++//   ADMIN_TOKEN                  token Admin, tối thiểu 16 ký tự, tự sinh ngẫu nhiên
++// Biến tùy chọn:
++//   TOKENS_JSON                  token dự phòng khi DB chưa có, dạng {"TOKEN":"Tên hiển thị"}
++//
++// Nguyên tắc: không có token nào được viết cứng trong mã; mọi hành động đều phải xác thực;
++// token không bao giờ được trả về cho người không phải Admin.
+ 
+-async function queryOfficer(url, key, table, token) {
++import { createHash, timingSafeEqual } from 'node:crypto';
++
++const OFFICER_TABLES = [
++  { tbl: 'officers',                 scope: 'bch',       role: 'staff' },
++  { tbl: 'tt_btv_officers',          scope: 'ttbtv',     role: 'staff' },
++  { tbl: 'province_officers',        scope: 'province',  role: 'staff' },
++  { tbl: 'office_officers',          scope: 'office',    role: 'staff' },
++  { tbl: 'action_100_days_officers', scope: 'action100', role: 'department' }
++];
++const WORKSPACES = new Set(['office', 'bch', 'ttbtv', 'province', 'action100', 'vpub', 'mttq']);
++
++// ---------- tiện ích ----------
++function send(res, status, body) { return res.status(status).json(body); }
++
++function safeEqual(a, b) {
++  const ha = createHash('sha256').update(String(a)).digest();
++  const hb = createHash('sha256').update(String(b)).digest();
++  return timingSafeEqual(ha, hb);
++}
++
++function getConfig() {
++  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
++  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
++  if (!url || !key) return null;
++  return { url, key };
++}
++
++function sbHeaders(key, extra) {
++  return { apikey: key, Authorization: `Bearer ${key}`, ...(extra || {}) };
++}
++
++function isAdminToken(t) {
++  const adm = process.env.ADMIN_TOKEN;
++  return !!adm && adm.length >= 16 && safeEqual(t, adm);
++}
++
++// ---------- chống dò token (best-effort: bộ nhớ của từng instance serverless) ----------
++const FAILS = new Map();
++const WINDOW_MS = 15 * 60 * 1000;
++const MAX_FAILS = 10;
++function clientIp(req) {
++  const xf = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
++  return xf || req.socket?.remoteAddress || 'unknown';
++}
++function isBlocked(ip) {
++  const rec = FAILS.get(ip);
++  if (!rec) return false;
++  if (Date.now() - rec.first > WINDOW_MS) { FAILS.delete(ip); return false; }
++  return rec.count >= MAX_FAILS;
++}
++function noteFail(ip) {
++  const now = Date.now();
++  const rec = FAILS.get(ip);
++  if (!rec || now - rec.first > WINDOW_MS) FAILS.set(ip, { first: now, count: 1 });
++  else rec.count += 1;
++  if (FAILS.size > 5000) FAILS.clear();
++}
++const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
++
++// ---------- tra cứu token ----------
++async function queryOfficer(cfg, table, token) {
+   try {
+-    const q = encodeURIComponent(token);
+-    // office_officers không có cột unit, mttq_kpi_people không có cột token -> xử lý riêng
+-    let select = "id,name,token,title,unit";
+-    if (table === "office_officers") select = "id,name,token,title";
+-    if (table === "mttq_kpi_people") return null; // bảng này không có token, bỏ qua ở server
+-    const r = await fetch(`${url}/rest/v1/${table}?select=${select}&token=eq.${q}&limit=1`, {
+-      headers: { apikey: key, Authorization: `Bearer ${key}` }
+-    });
++    const select = table === 'office_officers' ? 'id,name,token,title' : 'id,name,token,title,unit';
++    const r = await fetch(
++      `${cfg.url}/rest/v1/${table}?select=${select}&token=eq.${encodeURIComponent(token)}&limit=1`,
++      { headers: sbHeaders(cfg.key) }
++    );
+     if (!r.ok) return null;
+     const arr = await r.json();
+-    const row = Array.isArray(arr) ? arr[0] : arr;
+-    if (row && String(row.token || "").trim() === token) return row;
+-  } catch {}
++    const row = Array.isArray(arr) ? arr[0] : null;
++    if (row && safeEqual(String(row.token || '').trim(), token)) return row;
++  } catch { /* bỏ qua */ }
+   return null;
+ }
+ 
+ function tryEnvTokens(token) {
+-  // Cho phép cấu hình token tạm qua env (Vercel) dạng JSON: {"YOUR_TOKEN":"Tên hiển thị",...}
+-  // Không hardcode token trong source, chỉ đọc env khi DB chưa có - suy scope từ name
+   try {
+-    const raw = process.env.TOKENS_JSON || process.env.DEPARTMENT_TOKENS_JSON || "";
++    const raw = process.env.TOKENS_JSON || '';
+     if (!raw) return null;
+     const map = JSON.parse(raw);
+-    if (map && typeof map === "object" && map[token]) {
+-      const name = String(map[token]).trim();
+-      const isNGN = name === "Nguyễn Giang Nam";
+-      if (name === "CV nhập liệu") return { id: "data-entry-cv", name, role: "staff", scope: "data_entry", isNGN };
+-      if (name === "VPUB") return { id: "department-vpub-maua", name, role: "department", scope: "vpub", isNGN };
+-      if (name === "Trần Văn Hùng" && String(token).includes("MTTQ")) return { id: "mttq-" + token.slice(-10), name, role: "staff", scope: "mttq", title: "Cán bộ MTTQ", unit: "MTTQ", mttqAdmin: true, isNGN };
+-      if (String(name).includes("MTTQ")) return { id: "mttq-" + token.slice(-10), name, role: "staff", scope: "mttq", title: "Cán bộ MTTQ", unit: "MTTQ", mttqAdmin: false, isNGN };
+-      if (String(token).startsWith("CQ-")) return { id: "department-" + token.slice(8).toLowerCase(), name, role: "department", scope: "action100", isNGN };
+-      return { id: "env-" + token.slice(-10), name, role: "staff", scope: "office", isNGN };
+-    }
+-  } catch {}
+-  return null;
++    if (!map || typeof map !== 'object' || !Object.prototype.hasOwnProperty.call(map, token)) return null;
++    const name = String(map[token]).trim();
++    const isNGN = name === 'Nguyễn Giang Nam';
++    if (name === 'CV nhập liệu') return { id: 'data-entry-cv', name, role: 'staff', scope: 'data_entry', isNGN };
++    if (name === 'VPUB') return { id: 'department-vpub-maua', name, role: 'department', scope: 'vpub', isNGN };
++    if (token.startsWith('CQ-')) return { id: 'department-' + token.slice(8).toLowerCase(), name, role: 'department', scope: 'action100', isNGN };
++    return { id: 'env-' + token.slice(-10), name, role: 'staff', scope: 'office', isNGN };
++  } catch { return null; }
+ }
+ 
+-async function getRoleOverrides(supaUrl, supaKey) {
+-  try {
+-    const r = await fetch(`${supaUrl}/rest/v1/role_overrides?select=token,perms`, { headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}` } });
+-    if (!r.ok) return null;
+-    const arr = await r.json();
+-    if (!Array.isArray(arr)) return null;
+-    const map = {};
+-    arr.forEach(row => { if (row.token && row.perms && typeof row.perms === 'object') map[row.token] = row.perms; });
+-    return map;
+-  } catch { return null; }
++function buildUser(row, scope, token) {
++  const name = String(row.name || '').trim();
++  const title = String(row.title || '').trim();
++  const unit = String(row.unit || '').trim();
++  const isNGN = name === 'Nguyễn Giang Nam';
++  if (name === 'CV nhập liệu') return { id: `cv-${row.id}`, name, role: 'staff', scope: 'data_entry', title, unit, isNGN };
++  if (token.startsWith('CQ-')) {
++    return { id: `department-${row.id}`, name, role: 'department', scope: name === 'VPUB' ? 'vpub' : 'action100', title, unit, isNGN };
++  }
++  const bchTier = scope === 'bch'
++    ? (['Hà Đức Anh', 'Phạm Xuân Sơn', 'Chu Chính Sơn'].includes(name) ? 'full' : 'broad')
++    : undefined;
++  return { id: `${scope}-${row.id}`, name, role: 'staff', scope, title, unit, isNGN, ...(bchTier ? { bchTier } : {}) };
+ }
+-async function getRoleOverrideForToken(supaUrl, supaKey, token) {
++
++async function getOverrideForToken(cfg, token) {
+   try {
+-    const q = encodeURIComponent(token);
+-    const r = await fetch(`${supaUrl}/rest/v1/role_overrides?select=perms&token=eq.${q}&limit=1`, { headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}` } });
++    const r = await fetch(`${cfg.url}/rest/v1/role_overrides?select=perms&token=eq.${encodeURIComponent(token)}&limit=1`, { headers: sbHeaders(cfg.key) });
+     if (!r.ok) return null;
+     const arr = await r.json();
+     const row = Array.isArray(arr) ? arr[0] : null;
+     return row && row.perms && typeof row.perms === 'object' ? row.perms : null;
+   } catch { return null; }
+ }
+-async function saveRoleOverrides(supaUrl, supaKey, overrides, adminToken) {
+-  try {
+-    const rows = Object.entries(overrides).map(([token, perms]) => ({ token, perms, updated_by: adminToken || 'admin', updated_at: new Date().toISOString() }));
+-    if (!rows.length) {
+-      return { ok: true };
+-    }
+-    const r = await fetch(`${supaUrl}/rest/v1/role_overrides?on_conflict=token`, { method: 'POST', headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(rows) });
+-    if (!r.ok) { const t = await r.text(); return { ok: false, error: t || r.statusText }; }
+-    return { ok: true };
+-  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
++
++function attachPerms(user, perms) {
++  if (perms && Object.keys(perms).length) {
++    user._perms = perms;
++    const extra = Object.keys(perms).filter((ws) => { const p = perms[ws]; return p && (p.v || p.a || p.e || p.d); });
++    if (extra.length) user._extraScopes = extra;
++  }
++  return user;
+ }
+-async function deleteRoleOverrides(supaUrl, supaKey, tokens) {
+-  try {
+-    if (!tokens || !tokens.length) {
+-      const r = await fetch(`${supaUrl}/rest/v1/role_overrides?token=not.is.null`, { method: 'DELETE', headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}` } });
+-      if (!r.ok) { const t = await r.text(); return { ok: false, error: t }; }
+-      return { ok: true };
+-    }
+-    for (const tok of tokens) {
+-      const q = encodeURIComponent(tok);
+-      await fetch(`${supaUrl}/rest/v1/role_overrides?token=eq.${q}`, { method: 'DELETE', headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}` } });
++
++async function resolveUser(cfg, token) {
++  if (isAdminToken(token)) return { id: 'admin', name: 'Quản trị hệ thống', role: 'admin', scope: 'all' };
++  if (cfg) {
++    for (const { tbl, scope } of OFFICER_TABLES) {
++      const row = await queryOfficer(cfg, tbl, token);
++      if (row) return attachPerms(buildUser(row, scope, token), await getOverrideForToken(cfg, token));
++    }
++  }
++  const envUser = tryEnvTokens(token);
++  if (envUser) return attachPerms(envUser, cfg ? await getOverrideForToken(cfg, token) : null);
++  return null;
++}
++
++// ---------- role_overrides ----------
++function sanitizeOverrides(input) {
++  const out = {};
++  if (!input || typeof input !== 'object' || Array.isArray(input)) return out;
++  for (const [tok, perms] of Object.entries(input)) {
++    if (typeof tok !== 'string' || !tok || tok.length > 100 || !perms || typeof perms !== 'object') continue;
++    const clean = {};
++    for (const [ws, p] of Object.entries(perms)) {
++      if (!WORKSPACES.has(ws) || !p || typeof p !== 'object') continue;
++      const o = {};
++      for (const k of ['v', 'a', 'e', 'd']) if (typeof p[k] === 'boolean') o[k] = p[k];
++      if (Object.keys(o).length) clean[ws] = o;
++    }
++    if (Object.keys(clean).length) out[tok] = clean;
++  }
++  return out;
++}
++
++async function listOverrides(cfg) {
++  const r = await fetch(`${cfg.url}/rest/v1/role_overrides?select=token,perms`, { headers: sbHeaders(cfg.key) });
++  if (!r.ok) return null;
++  const arr = await r.json();
++  if (!Array.isArray(arr)) return null;
++  const map = {};
++  arr.forEach((row) => { if (row.token && row.perms && typeof row.perms === 'object') map[row.token] = row.perms; });
++  return map;
++}
++
++async function replaceOverrides(cfg, overrides, adminLabel) {
++  const existing = (await listOverrides(cfg)) || {};
++  const toDelete = Object.keys(existing).filter((k) => !(k in overrides));
++  for (const tok of toDelete) {
++    await fetch(`${cfg.url}/rest/v1/role_overrides?token=eq.${encodeURIComponent(tok)}`, { method: 'DELETE', headers: sbHeaders(cfg.key) });
++  }
++  const rows = Object.entries(overrides).map(([token, perms]) => ({ token, perms, updated_by: adminLabel, updated_at: new Date().toISOString() }));
++  if (rows.length) {
++    const r = await fetch(`${cfg.url}/rest/v1/role_overrides?on_conflict=token`, {
++      method: 'POST',
++      headers: sbHeaders(cfg.key, { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }),
++      body: JSON.stringify(rows)
++    });
++    if (!r.ok) return { ok: false, error: (await r.text()) || r.statusText };
++  }
++  return { ok: true, saved: rows.length, deleted: toDelete.length };
++}
++
++// Danh sách token cho màn Set role — CHỈ Admin
++async function listAllTokens(cfg) {
++  const out = [];
++  for (const { tbl, scope, role } of OFFICER_TABLES) {
++    const select = tbl === 'office_officers' ? 'id,name,token,title' : 'id,name,token,title,unit';
++    const r = await fetch(`${cfg.url}/rest/v1/${tbl}?select=${select}&order=name`, { headers: sbHeaders(cfg.key) });
++    if (!r.ok) continue;
++    const arr = await r.json();
++    if (!Array.isArray(arr)) continue;
++    for (const o of arr) {
++      const tok = String(o.token || '').trim();
++      if (!tok) continue;
++      let rRole = role, rScope = scope;
++      const name = String(o.name || '').trim();
++      if (tok.startsWith('CQ-')) { rRole = 'department'; rScope = name === 'VPUB' ? 'vpub' : 'action100'; }
++      if (name === 'CV nhập liệu') { rRole = 'staff'; rScope = 'data_entry'; }
++      out.push({ token: tok, name, role: rRole, scope: rScope, src: tbl, title: String(o.title || '').trim(), unit: String(o.unit || '').trim() });
+     }
+-    return { ok: true };
+-  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
++  }
++  return out;
+ }
+ 
++// ---------- handler ----------
+ export default async function handler(req, res) {
+-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
++  res.setHeader('Cache-Control', 'no-store');
++  if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
+   try {
+-    const { token, action, overrides } = req.body || {};
+-    const supaUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+-    const supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
++    const body = req.body && typeof req.body === 'object' ? req.body : {};
++    const action = String(body.action || '');
++    const token = String(body.token || '').trim();
++    const ip = clientIp(req);
++
++    if (!['login', 'get_role_overrides', 'save_role_overrides', 'list_tokens', 'verify_admin'].includes(action)) {
++      return send(res, 400, { error: 'Invalid action' });
++    }
++    if (!token || token.length > 200) return send(res, 400, { error: 'Missing token' });
++    if (isBlocked(ip)) return send(res, 429, { error: 'Thử sai quá nhiều lần. Vui lòng chờ 15 phút.' });
++
++    const cfg = getConfig();
++    if (!cfg && !isAdminToken(token) && !process.env.TOKENS_JSON) {
++      return send(res, 500, { error: 'Máy chủ chưa cấu hình SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.' });
++    }
++
++    const user = await resolveUser(cfg, token);
++    if (!user) {
++      noteFail(ip);
++      await sleep(400);
++      return send(res, 401, { error: 'Token không hợp lệ hoặc chưa được cấp quyền.' });
++    }
++
++    if (action === 'login') return send(res, 200, user);
++
++    if (action === 'verify_admin') {
++      return user.role === 'admin' ? send(res, 200, { ok: true }) : send(res, 403, { error: 'Chỉ Admin.' });
++    }
++
++    if (!cfg) return send(res, 500, { error: 'Missing Supabase config' });
++
+     if (action === 'get_role_overrides') {
+-      if (!supaUrl || !supaKey) return res.status(200).json({ overrides: {}, note: 'no supabase config' });
+-      const map = await getRoleOverrides(supaUrl, supaKey);
+-      if (map === null) return res.status(200).json({ overrides: {}, error: 'role_overrides table missing - run SQL to create' });
+-      return res.status(200).json({ overrides: map });
++      const all = await listOverrides(cfg);
++      if (all === null) return send(res, 200, { overrides: {}, error: 'role_overrides table missing - run SQL to create' });
++      if (user.role === 'admin') return send(res, 200, { overrides: all });
++      return send(res, 200, { overrides: all[token] ? { [token]: all[token] } : {} });
+     }
++
++    // Từ đây trở xuống chỉ Admin
++    if (user.role !== 'admin') return send(res, 403, { error: 'Chỉ Admin được thực hiện thao tác này.' });
++
++    if (action === 'list_tokens') return send(res, 200, { tokens: await listAllTokens(cfg) });
++
+     if (action === 'save_role_overrides') {
+-      const t = String(token || '').trim();
+-      const isAdminTok = t === 'ADM-MAUA-adm' || (process.env.ADMIN_TOKEN && t === process.env.ADMIN_TOKEN);
+-      if (!isAdminTok) return res.status(403).json({ error: 'Chỉ Admin được lưu Set role' });
+-      if (!supaUrl || !supaKey) return res.status(500).json({ error: 'Missing Supabase config' });
+-      const ov = overrides && typeof overrides === 'object' ? overrides : {};
+-      const existing = await getRoleOverrides(supaUrl, supaKey) || {};
+-      const toDelete = Object.keys(existing).filter(k => !(k in ov));
+-      if (toDelete.length) await deleteRoleOverrides(supaUrl, supaKey, toDelete);
+-      const saveRes = await saveRoleOverrides(supaUrl, supaKey, ov, t);
+-      if (!saveRes.ok) return res.status(500).json({ error: saveRes.error || 'save failed' });
+-      return res.status(200).json({ ok: true, saved: Object.keys(ov).length, deleted: toDelete.length });
+-    }
+-    if (action !== 'login') return res.status(400).json({ error: 'Invalid action' });
+-    if (!token) return res.status(400).json({ error: 'Missing token' });
+-    const t = String(token).trim();
+-
+-    // 1) ADMIN - lấy từ Vercel Env (giữ fallback demo theo yêu cầu)
+-    if (process.env.ADMIN_TOKEN && t === process.env.ADMIN_TOKEN) {
+-      return res.status(200).json({ id: "demo-admin", name: "Quản trị hệ thống", role: "admin", scope: "all" });
+-    }
+-    if (t === "ADM-MAUA-adm") {
+-      return res.status(200).json({ id: "demo-admin", name: "Quản trị hệ thống", role: "admin", scope: "all" });
+-    }
+-
+-    // 2) Tra cứu DB qua REST (dùng SERVICE_ROLE_KEY, không xóa data cũ)
+-    if (supaUrl && supaKey) {
+-      const tables = [
+-        { tbl: "officers", scope: "bch" },
+-        { tbl: "tt_btv_officers", scope: "ttbtv" },
+-        { tbl: "province_officers", scope: "province" },
+-        { tbl: "office_officers", scope: "office" },
+-        { tbl: "action_100_days_officers", scope: "action100" }
+-      ];
+-      for (const { tbl, scope } of tables) {
+-        const row = await queryOfficer(supaUrl, supaKey, tbl, t);
+-        if (row) {
+-          const name = String(row.name || "").trim();
+-          const isNGN = name === "Nguyễn Giang Nam";
+-          let userObj = null;
+-          if (name === "CV nhập liệu") {
+-            userObj = { id: `cv-${row.id}`, name: name || "CV nhập liệu", role: "staff", scope: "data_entry", title: String(row.title || "").trim(), unit: String(row.unit || "").trim(), isNGN };
+-          } else if (scope === "mttq") {
+-            const isAdmin = name === "Trần Văn Hùng";
+-            userObj = { id: `mttq-${row.id}`, name, role: "staff", scope: "mttq", title: String(row.title || "").trim() || "Cán bộ MTTQ", unit: String(row.unit || "").trim() || "MTTQ", mttqAdmin: isAdmin, isNGN };
+-          } else if (String(t).startsWith("CQ-")) {
+-            const deptScope = name === "VPUB" ? "vpub" : "action100";
+-            userObj = { id: `department-${row.id}`, name, role: "department", scope: deptScope, title: String(row.title || "").trim(), unit: String(row.unit || "").trim(), isNGN };
+-          } else {
+-            const bchTier = scope === "bch" && ["Hà Đức Anh","Phạm Xuân Sơn","Chu Chính Sơn"].includes(name) ? "full" : (scope === "bch" ? "broad" : undefined);
+-            userObj = { id: `${scope}-${row.id}`, name, role: "staff", scope, title: String(row.title || "").trim(), unit: String(row.unit || "").trim(), isNGN, ...(bchTier ? {bchTier} : {}) };
+-          }
+-          if (userObj) {
+-            try {
+-              const perms = await getRoleOverrideForToken(supaUrl, supaKey, t);
+-              if (perms && typeof perms === 'object' && Object.keys(perms).length) {
+-                userObj._perms = perms;
+-                const extra = Object.keys(perms).filter(ws => { const p = perms[ws]; return p && (p.v || p.a || p.e || p.d); });
+-                if (extra.length) userObj._extraScopes = extra;
+-              }
+-            } catch {}
+-            return res.status(200).json(userObj);
+-          }
+-        }
+-      }
+-    }
+-
+-    // 3) Fallback env TOKENS_JSON (không hardcode trong source) cho giai đoạn chưa seed DB
+-    const envUser = tryEnvTokens(t);
+-    if (envUser) {
+-      try {
+-        const perms = await getRoleOverrideForToken(supaUrl, supaKey, t);
+-        if (perms && typeof perms === 'object' && Object.keys(perms).length) {
+-          envUser._perms = perms;
+-          const extra = Object.keys(perms).filter(ws => { const p = perms[ws]; return p && (p.v || p.a || p.e || p.d); });
+-          if (extra.length) envUser._extraScopes = extra;
+-        }
+-      } catch {}
+-      return res.status(200).json(envUser);
+-    }
+-
+-    // Trả 200 thay vì 401 để không spam lỗi đỏ trong Console (F12) khi auto-revalidate ở localhost
+-    // Client vẫn check `fresh.role` để phân biệt thành công/thất bại, không đổi logic xác thực
+-    return res.status(200).json({ error: 'Token không hợp lệ' });
++      const clean = sanitizeOverrides(body.overrides);
++      const result = await replaceOverrides(cfg, clean, 'admin');
++      if (!result.ok) return send(res, 500, { error: result.error || 'save failed' });
++      return send(res, 200, result);
++    }
++    return send(res, 400, { error: 'Invalid action' });
+   } catch (e) {
+-    console.error("api/admin error:", e);
+-    return res.status(500).json({ error: 'Internal error', detail: String(e?.message || e) });
++    console.error('api/admin error:', e);
++    return send(res, 500, { error: 'Internal error' });
+   }
+ }
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/env.example.txt repo/vanphongsomaua-main/env.example.txt
+--- env.example.txt	2026-10-03 06:37:43.219495339 +0000
++++ env.example.txt	2026-10-03 06:42:30.660608317 +0000
+@@ -1,15 +1,13 @@
+-# Supabase - lấy từ Dashboard Project Settings > API
++# ===== Vercel (Settings > Environment Variables) — KHÔNG commit giá trị thật =====
+ SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+-SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
+-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+-NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
++SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY     # bắt buộc; api/admin.js không còn dùng khóa anon thay thế
+ 
+-# Admin token - chỉ set ở Vercel Env, không commit
+-ADMIN_TOKEN=ADM-MAUA-adm
++# Token Admin: tự sinh ngẫu nhiên, tối thiểu 16 ký tự, ví dụ:  openssl rand -hex 24
++ADMIN_TOKEN=
+ 
+-# Fallback tạm nếu chưa seed DB (JSON string, không hardcode trong source)
+-# Ví dụ: TOKENS_JSON={"CQ-MAUA-CV":"CV nhập liệu","CQ-MAUA-VPDU":"VPDU"}
++# (tùy chọn) token dự phòng khi DB chưa có, dạng JSON: {"TOKEN":"Tên hiển thị"}
++# Lưu ý: sau Phase 2 của RLS, token chỉ có trong env sẽ KHÔNG ghi được dữ liệu — phải có trong bảng cán bộ.
+ TOKENS_JSON=
+ 
+-# Token demo giữ lại cho offline demo (?demo=1)
+-# Không cần set khi production
++# ===== Supabase Edge Function send-email (supabase secrets set ...) =====
++# RESEND_API_KEY, ADMIN_TOKEN (cùng giá trị với Vercel), MAIL_FROM, ALLOWED_ORIGINS
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/index.html repo/vanphongsomaua-main/index.html
+--- index.html	2026-10-03 06:37:43.219505345 +0000
++++ index.html	2026-10-03 06:40:43.022841975 +0000
+@@ -2866,7 +2866,7 @@
+             <div class="drill-head">
+                 <div>
+                     <h3>🔐 Xác thực Phân quyền</h3>
+-                    <p>Chỉ admin khi nhập mật khẩu mới vào được</p>
++                    <p>Nhập lại token Admin để mở màn phân quyền</p>
+                 </div>
+                 <div class="drill-actions">
+                     <button class="btn-primary" onclick="confirmSetRolePassword()">Xác nhận</button>
+@@ -2875,8 +2875,8 @@
+             </div>
+             <div style="padding:16px">
+                 <label style="font-weight:700;color:#334155">Mật khẩu</label>
+-                <input id="setRolePasswordInput" type="password" placeholder="Nhập mật khẩu" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;margin-top:6px" onkeydown="if(event.key==='Enter') confirmSetRolePassword()">
+-                <div id="setRolePasswordError" style="margin-top:8px;color:#dc2626;font-size:12px;display:none">Sai mật khẩu</div>
++                <input id="setRolePasswordInput" type="password" placeholder="Nhập lại token Admin" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;margin-top:6px" onkeydown="if(event.key==='Enter') confirmSetRolePassword()">
++                <div id="setRolePasswordError" style="margin-top:8px;color:#dc2626;font-size:12px;display:none">Token Admin không đúng</div>
+             </div>
+         </div>
+     </div>
+@@ -3045,7 +3045,7 @@
+         </div>
+     </div>
+ 
+-    <script type="module" src="js/main.js?v=20260961"></script>
++    <script type="module" src="js/main.js?v=20261003"></script>
+     <script>
+     // Chart a11y (audit 2026-09-30): role + nhan tieng Viet cho screen reader.
+     // So lieu chi tiet nam trong chu giai kem so luong ngay duoi moi bieu do.
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/js/legacy.js repo/vanphongsomaua-main/js/legacy.js
+--- js/legacy.js	2026-10-03 06:37:43.219627489 +0000
++++ js/legacy.js	2026-10-03 06:44:10.732449201 +0000
+@@ -48,21 +48,6 @@
+ // ===== DEMO MODE (?demo=1) - CHE TÊN + CHẶN GHI SUPABASE =====
+ var DEMO_MODE = false; // Tắt demo để load dữ liệu thật từ DB
+ window.DEMO_MODE = DEMO_MODE;
+-// Mức 2: chặn DevTools mức nhẹ (giữ mượt) - chỉ toast, không block cứng
+-(function(){
+-  try{
+-    document.addEventListener('keydown', function(e){
+-      const k = String(e.key||'').toLowerCase();
+-      if(e.key==='F12' || (e.ctrlKey&&e.shiftKey&&['i','j','c'].includes(k.toUpperCase())) || (e.ctrlKey&&k==='u')){
+-        e.preventDefault();
+-        try{ showToast('info','Thao tác hạn chế','Vui lòng không mở DevTools trên máy công cộng'); }catch(_){}
+-      }
+-    });
+-    document.addEventListener('contextmenu', function(e){
+-      if(e.target.closest('#authGate')) e.preventDefault();
+-    });
+-  }catch(_){}
+-})();
+ var _demoNameMap = new Map();
+ function demoMaskName(name){
+     if(!DEMO_MODE) return name;
+@@ -174,13 +159,12 @@
+ } catch (e) {}
+ 
+ // ===== ĐĂNG NHẬP TOKEN / PHÂN QUYỀN DEMO =====
+-// Token Admin test: ADM-MAUA-adm
++// Xác thực duy nhất qua POST /api/admin; không có token nào được viết cứng trong mã nguồn.
+ // Bản triển khai thật nên dùng Supabase Auth + RLS; token demo này chỉ dùng cho file trình diễn. Đã bật RLS
+ // const ADMIN_TOKEN = ["ADM", "MAUA", "adm"].join("-");
+ // Token thật đã chuyển lên Supabase (4 bảng: officers, tt_btv_officers, province_officers, office_officers)
+ // Không hardcode token trong source để tránh lộ khi người khác đọc code.
+ // Xác thực duy nhất qua POST /api/admin (server dùng SERVICE_ROLE_KEY tra DB, giữ nguyên giá trị, không xóa data cũ).
+-// Giữ fallback demo ADM-MAUA-adm theo yêu cầu.
+ const STAFF_TOKENS = {};
+ const MTTQ_TOKENS = {};
+ const MTTQ_ADMIN_TOKEN = "YOUR_MTTQ_ADMIN_TOKEN"; // cờ mttqAdmin do server (/api/admin) trả về, không so sánh token ở client
+@@ -257,8 +241,9 @@
+ }
+ async function deleteActivityLog(id) {
+     if (!CURRENT_USER || CURRENT_USER.role !== "admin") return;
+-    const pass = prompt("Nhập mật khẩu xác nhận xóa nhật ký:");
+-    if (pass !== "2095") return showToast("error", "Sai mật khẩu", "Không thể xóa bản ghi nhật ký.");
++    const pass = prompt("Nhập lại token Admin để xác nhận xóa nhật ký:");
++    if (pass === null) return;
++    if (!(await verifyAdminToken(pass))) return showToast("error", "Xác nhận không đúng", "Không thể xóa bản ghi nhật ký.");
+     const row = ACTIVITY_LOG_ROWS.find(x => Number(x.id) === Number(id));
+     const r = await fetch(`${SUPABASE_URL}/rest/v1/activity_logs?id=eq.${encodeURIComponent(id)}`, { method: "DELETE", headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } });
+     if (!r.ok) return showToast("error", "Không thể xóa nhật ký", await r.text());
+@@ -435,9 +420,9 @@
+     if (!CURRENT_USER || CURRENT_USER.role !== "admin") return;
+     const file = event.target && event.target.files && event.target.files[0];
+     if (!file) return;
+-    const entered = prompt("Nhập mật khẩu quản trị để xác nhận khôi phục dữ liệu:\n(Thao tác này sẽ GHI ĐÈ lên toàn bộ dữ liệu hiện tại)");
++    const entered = prompt("Nhập lại token Admin để xác nhận khôi phục dữ liệu:\n(Thao tác này sẽ GHI ĐÈ lên toàn bộ dữ liệu hiện tại)");
+     if (entered === null) { event.target.value = ""; return; }
+-    if (entered !== "2095@Admin!MauA!TheMinh@") { event.target.value = ""; showToast("error", "Sai mật khẩu", "Bạn cần mật khẩu quản trị để khôi phục dữ liệu."); return; }
++    if (!(await verifyAdminToken(entered))) { event.target.value = ""; showToast("error", "Xác nhận không đúng", "Cần token Admin hợp lệ để khôi phục dữ liệu."); return; }
+     if (!window.confirm("Khôi phục dữ liệu sẽ GHI ĐÈ lên dữ liệu hiện tại theo ID. Bạn chắc chắn muốn tiếp tục?")) { event.target.value = ""; return; }
+     setBackupStatus("Đang đọc tệp sao lưu...");
+     try {
+@@ -3252,7 +3237,7 @@
+ 
+ 
+ // ===== V17: NHIỆM VỤ BCH ĐẢNG BỘ / public.officers + public.tasks =====
+-const BCH_OFFICERS_API = `${SUPABASE_URL}/rest/v1/officers?select=id,name,token,title,unit,note&order=id.asc`;
++const BCH_OFFICERS_API = `${SUPABASE_URL}/rest/v1/officers?select=id,name,title,unit,note&order=id.asc`;
+ const BCH_TASKS_API = `${SUPABASE_URL}/rest/v1/tasks?select=id,officer_name,task_name,product,amount,deadline,result,updated_at,created_at,note,phat_sinh,role,completed_date,status,staff_note,admin_note,attachment_path,attachment_name,attachment_type,attachment_size,attachment_approved,attachment_approved_at,attachment_approved_by&order=id.asc`;
+ let BCH_OFFICERS = [];
+ let BCH_TASKS = [];
+@@ -3796,7 +3781,7 @@
+ 
+ // ===== V45: WORKSPACE 3 TT/BTV (clone logic BCH, tách bảng riêng) =====
+ // ===== V17: NHIỆM VỤ TT, BTV ĐU GIAO / public.tt_btv_officers + public.tt_btv_tasks =====
+-const TTBTV_OFFICERS_API = `${SUPABASE_URL}/rest/v1/tt_btv_officers?select=id,name,token,title,unit,note&order=id.asc`;
++const TTBTV_OFFICERS_API = `${SUPABASE_URL}/rest/v1/tt_btv_officers?select=id,name,title,unit,note&order=id.asc`;
+ const TTBTV_TASKS_API = `${SUPABASE_URL}/rest/v1/tt_btv_tasks?select=id,officer_name,ubnd_leader,task_name,product,amount,ubnd_source,deadline,result,updated_at,created_at,note,phat_sinh,role,completed_date,status,staff_note,admin_note,attachment_path,attachment_name,attachment_type,attachment_size,attachment_approved,attachment_approved_at,attachment_approved_by,source_sheet,source_row,source_doc,source_group,unit_name,specialist_name&order=id.asc`;
+ let TTBTV_OFFICERS = [];
+ let TTBTV_TASKS = [];
+@@ -4210,7 +4195,7 @@
+ // ===== V50: WORKSPACE NHIỆM VỤ TỈNH GIAO =====
+ // ===== V45: WORKSPACE 3 Tỉnh giao (clone logic BCH, tách bảng riêng) =====
+ // ===== V17: NHIỆM VỤ TT, BTV ĐU GIAO / public.province_officers + public.province_tasks =====
+-const PROV_OFFICERS_API = `${SUPABASE_URL}/rest/v1/province_officers?select=id,name,token,title,unit,note&order=id.asc`;
++const PROV_OFFICERS_API = `${SUPABASE_URL}/rest/v1/province_officers?select=id,name,title,unit,note&order=id.asc`;
+ const PROV_TASKS_API = `${SUPABASE_URL}/rest/v1/province_tasks?select=id,officer_name,task_name,product,amount,deadline,result,updated_at,created_at,note,phat_sinh,role,completed_date,status,staff_note,admin_note,attachment_path,attachment_name,attachment_type,attachment_size,attachment_approved,attachment_approved_at,attachment_approved_by,source_sheet,source_row,source_doc,source_group,unit_name,specialist_name,source_form,issuing_authority,implementation_detail,overdue_reason,source_status,progress,van_ban_tinh,van_ban_xa&order=id.asc`;
+ let PROV_OFFICERS = [];
+ let PROV_TASKS = [];
+@@ -5031,7 +5016,7 @@
+     const isAdmin = CURRENT_USER && CURRENT_USER.role === "admin";
+     const headers = ["STT", "Nhiệm vụ", "Cán bộ", "Vai trò", "Hạn", "Trạng thái", "Sản phẩm", "Ghi chú cán bộ", "Ghi chú Admin", "Tệp đính kèm"];
+     const rows = filtered.map((x, i) => [i + 1, x.task, x.owner, x.role, x.due, x.status, x.product || "Không", x.staff_note || "", x.admin_note || "", isAdmin ? (x.attachment_path ? (x.attachment_approved ? (x.attachment_name || "") : "Chờ duyệt") : "") : (x.attachment_approved ? "Đã duyệt" : (x.attachment_path ? "Chờ duyệt" : ""))]);
+-    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
++    const csv = [headers, ...rows].map(r => r.map(c => `"${String(vpSafeCell(c)).replace(/"/g, '""')}"`).join(",")).join("\n");
+     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+     const link = document.createElement("a");
+     const url = URL.createObjectURL(blob);
+@@ -5050,7 +5035,7 @@
+     const finalName = filename.endsWith(".xlsx") ? filename : filename + ".xlsx";
+     try {
+         if (window.XLSX && XLSX.utils && typeof XLSX.utils.aoa_to_sheet === "function") {
+-            const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
++            const ws = XLSX.utils.aoa_to_sheet(vpSafeSheet([headers, ...rows]));
+             const colWidths = headers.map((h, i) => {
+                 let max = String(h || "").length;
+                 for (const r of rows) { const l = String(r[i] ?? "").length; if (l > max) max = l; }
+@@ -5064,7 +5049,7 @@
+             return true;
+         }
+     } catch (e) { console.warn("XLSX export fail, fallback CSV", e); }
+-    const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
++    const esc = v => `"${String(vpSafeCell(v ?? "")).replace(/"/g, '""')}"`;
+     const csv = "\uFEFF" + [headers, ...rows].map(r => r.map(esc).join(",")).join("\r\n");
+     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+     const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+@@ -5081,7 +5066,7 @@
+             const wb = XLSX.utils.book_new();
+             sheets.forEach(s=>{
+                 const headers=s.headers||[]; const rows=s.rows||[]; const sheetName=String(s.sheetName||"Sheet1").slice(0,31).replace(/[\\\/\?\*\[\]]/g,"_") || "Sheet1";
+-                const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
++                const ws = XLSX.utils.aoa_to_sheet(vpSafeSheet([headers, ...rows]));
+                 const colWidths=headers.map((h,i)=>{ let max=String(h||"").length; for(const r of rows){ const l=String(r[i]??"").length; if(l>max) max=l; } return {wch: Math.min(Math.max(max+2,10),50)}; });
+                 ws["!cols"]=colWidths;
+                 XLSX.utils.book_append_sheet(wb, ws, sheetName);
+@@ -5092,7 +5077,7 @@
+         }
+     }catch(e){ console.warn("XLSX multi fail",e); }
+     // fallback: gộp tất cả sheet thành 1 CSV với phân tách
+-    const esc2=v=>`"${String(v??"").replace(/"/g,'""')}"`;
++    const esc2=v=>`"${String(vpSafeCell(v??"")).replace(/"/g,'""')}"`;
+     let csv="\uFEFF";
+     sheets.forEach(s=>{
+         csv+=`"${s.sheetName}"\r\n` + [s.headers, ...s.rows].map(r=>r.map(esc2).join(",")).join("\r\n") + "\r\n\r\n";
+@@ -5501,7 +5486,7 @@
+ 
+ // ===== ACTION 100 DAYS =====
+ let ACTION100_TASKS_API = `${SUPABASE_URL}/rest/v1/action_100_days_tasks?select=*&order=id.asc`;
+-const ACTION100_OFFICERS_API = `${SUPABASE_URL}/rest/v1/action_100_days_officers?select=*&order=id.asc`;
++const ACTION100_OFFICERS_API = `${SUPABASE_URL}/rest/v1/action_100_days_officers?select=id,name,title,unit,note,created_at&order=id.asc`;
+ let ACTION100_TASKS = [], ACTION100_OFFICERS = [], ACTION100_MODE = 'action100';
+ let KH100_TASKS_CACHE = [], VPUB_TASKS_CACHE = [];
+ let PENDING_ACTION100_ADD_TASK = null;
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/js/main.js repo/vanphongsomaua-main/js/main.js
+--- js/main.js	2026-10-03 06:37:43.221395787 +0000
++++ js/main.js	2026-10-03 06:40:43.020075441 +0000
+@@ -1 +1 @@
+-import "./config.js"; import "./utils.js"; import "./data.js"; import "./render.js"; import "./email.js"; function loadClassic(src){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=rej;document.body.appendChild(s);});} export function init(){loadClassic("js/store.js?v=20260923").then(()=>loadClassic("js/modules/utils.js?v=20260960")).then(()=>loadClassic("js/modules/auth.js?v=20260923")).then(()=>loadClassic("js/modules/ttbtv.js?v=20260961")).then(()=>loadClassic("js/modules/prov-bch.js?v=20260936")).then(()=>loadClassic("js/modules/pp-mttq.js?v=20260935")).then(()=>loadClassic("js/modules/nq-lead.js?v=20260942")).then(()=>{const s=document.createElement("script");s.src="js/legacy.js?v=20260960";s.onload=()=>{try{window.dsNormalizeDateFields&&window.dsNormalizeDateFields(document);}catch(e){}};document.body.appendChild(s);}).catch(e=>console.error("legacy boot fail",e));} init();
++import "./config.js"; import "./utils.js"; import "./data.js"; import "./render.js"; import "./email.js"; function loadClassic(src){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=rej;document.body.appendChild(s);});} export function init(){loadClassic("js/store.js?v=20260923").then(()=>loadClassic("js/modules/utils.js?v=20261003")).then(()=>loadClassic("js/modules/auth.js?v=20261003")).then(()=>loadClassic("js/modules/ttbtv.js?v=20261003")).then(()=>loadClassic("js/modules/prov-bch.js?v=20261003")).then(()=>loadClassic("js/modules/pp-mttq.js?v=20260935")).then(()=>loadClassic("js/modules/nq-lead.js?v=20260942")).then(()=>{const s=document.createElement("script");s.src="js/legacy.js?v=20261003";s.onload=()=>{try{window.dsNormalizeDateFields&&window.dsNormalizeDateFields(document);}catch(e){}};document.body.appendChild(s);}).catch(e=>console.error("legacy boot fail",e));} init();
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/js/modules/auth.js repo/vanphongsomaua-main/js/modules/auth.js
+--- js/modules/auth.js	2026-10-03 06:37:43.221418959 +0000
++++ js/modules/auth.js	2026-10-03 06:40:26.411107673 +0000
+@@ -207,39 +207,6 @@
+     setTimeout(() => { try{ if(typeof vpRestoreLastWs==="function") vpRestoreLastWs(); }catch(e){} }, 900);
+ }
+ 
+-async function resolveWorkspaceToken(token) {
+-    const headers = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
+-    const q = encodeURIComponent(token);
+-    const endpoints = [
+-        { scope: "bch", url: `${SUPABASE_URL}/rest/v1/officers?select=id,name,token,title,unit&token=eq.${q}&limit=1` },
+-        { scope: "ttbtv", url: `${SUPABASE_URL}/rest/v1/tt_btv_officers?select=id,name,token,title,unit&token=eq.${q}&limit=1` },
+-        { scope: "province", url: `${SUPABASE_URL}/rest/v1/province_officers?select=id,name,token,title,unit&token=eq.${q}&limit=1` },
+-        { scope: "office", url: `${SUPABASE_URL}/rest/v1/office_officers?select=id,name,token,title&token=eq.${q}&limit=1` },
+-        { scope: "action100", url: `${SUPABASE_URL}/rest/v1/action_100_days_officers?select=id,name,token,title,unit&token=eq.${q}&limit=1` }
+-    ];
+-    for (const ep of endpoints) {
+-        try {
+-            const r = await fetch(ep.url, { headers });
+-            if (!r.ok) continue;
+-            const arr = await r.json();
+-            if (Array.isArray(arr) && arr[0] && String(arr[0].token || "").trim() === token) {
+-                const o = arr[0];
+-                const name = String(o.name || "").trim();
+-                const isNGN = name === "Nguyễn Giang Nam";
+-                // office/action100: nếu là CQ- thì department
+-                const isDept = String(token).startsWith("CQ-");
+-                if (isDept) {
+-                    const deptScope = name === "VPUB" ? "vpub" : "action100";
+-                    return { id: `department-${o.id}`, name, role: "department", scope: deptScope, title: String(o.title || "").trim(), unit: String(o.unit || "").trim(), isNGN };
+-                }
+-                if (name === "CV nhập liệu") return { id: `cv-${o.id}`, name, role: "staff", scope: "data_entry", title: String(o.title || "").trim(), unit: String(o.unit || "").trim(), isNGN };
+-                return { id: `${ep.scope}-${o.id}`, name, role: "staff", scope: ep.scope, title: String(o.title || "").trim(), unit: String(o.unit || "").trim(), isNGN };
+-            }
+-        } catch (e) { console.warn(`Không kiểm tra được token ${ep.scope}:`, e); }
+-    }
+-    return null;
+-}
+-
+ async function loginWithToken() {
+     const input = document.getElementById("tokenInput");
+     const token = input.value.trim();
+@@ -249,12 +216,6 @@
+     if (!token) { err.textContent = "Vui lòng nhập token truy cập."; input.focus(); return; }
+     // Token thật đã chuyển lên Supabase 4 bảng, xác thực duy nhất qua /api/admin (SERVICE_ROLE_KEY)
+     // Giữ fallback demo theo yêu cầu - làm mờ plain string để giảm grep
+-    const _admTok = ["ADM","MAUA","adm"].join("-");
+-    if (token === _admTok) {
+-        setLoggedInUser({ id: "demo-admin", name: "Quản trị hệ thống", role: "admin", scope: "all" }, token);
+-        input.value = "";
+-        return;
+-    }
+     try {
+         if (btn) { btn.disabled = true; btn.textContent = "⏳ Đang kiểm tra..."; }
+         const loginRes = await fetch('/api/admin', {
+@@ -268,20 +229,10 @@
+             input.value = "";
+             return;
+         }
+-        // Fallback trực tiếp Supabase (cho local dev hoặc khi Vercel chưa có SERVICE_ROLE_KEY) - không đụng data gốc, chỉ đọc token
+-        try {
+-            const direct = await resolveWorkspaceToken(token);
+-            if (direct) { setLoggedInUser(direct, token); input.value = ""; err.textContent = ""; return; }
+-        } catch(_){}
+         err.textContent = loggedUser.error || "Token không hợp lệ hoặc chưa được cấp quyền.";
+         input.select();
+     } catch (e) {
+         void e;
+-        // Fallback trực tiếp Supabase khi không gọi được /api/admin (local file://)
+-        try {
+-            const direct = await resolveWorkspaceToken(token);
+-            if (direct) { setLoggedInUser(direct, token); input.value = ""; err.textContent = ""; return; }
+-        } catch(_){}
+         err.textContent = "Không thể kết nối máy chủ xác thực. Vui lòng thử lại.";
+     } finally {
+         if (btn) { btn.disabled = false; btn.textContent = "🔐 Đăng nhập"; }
+@@ -321,47 +272,21 @@
+     if(!rememberedToken){ const c=readCache("vp_demo_token"); if(c) rememberedToken = typeof c==="string"?c:(c.token||""); }
+     if (rememberedToken) {
+         setAuthStatus("Đang tải… xin đợi");
+-        // khôi phục nhanh từ cache để không flash, đồng thời xác thực lại qua /api/admin (token thật nằm trên 4 bảng Supabase)
+-        try{
+-            const cachedUserRaw = safeLSGet("vp_demo_user","") || (()=>{try{return sessionStorage.getItem("vp_demo_user")||"";}catch(e){return "";}})();
+-            if(cachedUserRaw){
+-                const cu=JSON.parse(cachedUserRaw);
+-                if(cu && cu.id && cu.role){
+-                    // demo fallback giữ nguyên (làm mờ)
+-                    if (rememberedToken === ["ADM","MAUA","adm"].join("-")) {
+-                        cu._rawToken=rememberedToken; setLoggedInUser(cu, rememberedToken); return;
+-                    }
+-                    // thử xác thực lại qua server để đảm bảo token vẫn hợp lệ trên DB (không lộ token trong source)
+-                    try {
+-                        const r = await fetch('/api/admin', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'login', token: rememberedToken}) });
+-                        const fresh = await r.json().catch(()=>null);
+-                        if (r.ok && fresh && fresh.role) { setLoggedInUser(fresh, rememberedToken); return; }
+-                    } catch(e){ void e; }
+-                    // fallback cache khi offline
+-                    cu._rawToken=rememberedToken; setLoggedInUser(cu, rememberedToken); return;
+-                }
+-            }
+-        }catch(e){}
+-        if (rememberedToken === ["ADM","MAUA","adm"].join("-")) {
+-            setLoggedInUser({ id: "demo-admin", name: "Quản trị hệ thống", role: "admin", scope: "all" }, rememberedToken);
+-            return;
+-        }
+-        // xác thực qua server (4 bảng Supabase)
+-        try{
+-            const r2 = await fetch('/api/admin', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'login', token: rememberedToken}) });
+-            const u = await r2.json().catch(()=>null);
+-            if (r2.ok && u && u.role) { setLoggedInUser(u, rememberedToken); return; }
+-        }catch(e){ void e;
+-            try{
+-                const cachedUserRaw2 = safeLSGet("vp_demo_user","") || (()=>{try{return sessionStorage.getItem("vp_demo_user")||"";}catch(e){return "";}})();
+-                if(cachedUserRaw2){ const cu2=JSON.parse(cachedUserRaw2); if(cu2 && cu2.id){ cu2._rawToken=rememberedToken; setLoggedInUser(cu2, rememberedToken); return; } }
+-            }catch(_){}
++        // Luôn xác thực lại với máy chủ. Chỉ dùng bộ nhớ đệm khi KHÔNG kết nối được (mất mạng).
++        // Nếu máy chủ trả lời token không hợp lệ (đã thu hồi/sai) thì đăng xuất, không dùng cache.
++        let unreachable = false;
++        try {
++            const r = await fetch('/api/admin', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'login', token: rememberedToken}) });
++            const fresh = await r.json().catch(()=>null);
++            if (r.ok && fresh && fresh.role) { setLoggedInUser(fresh, rememberedToken); return; }
++        } catch (e) { unreachable = true; }
++        if (unreachable) {
++            try {
++                const raw = safeLSGet("vp_demo_user","") || sessionStorage.getItem("vp_demo_user") || "";
++                const cu = raw ? JSON.parse(raw) : null;
++                if (cu && cu.id && cu.role) { cu._rawToken = rememberedToken; setLoggedInUser(cu, rememberedToken); return; }
++            } catch(_) {}
+         }
+-        // Fallback trực tiếp Supabase khi không gọi được /api/admin (local file:// hoặc Vercel chưa redeploy)
+-        try{
+-            const direct = await resolveWorkspaceToken(rememberedToken);
+-            if(direct){ setLoggedInUser(direct, rememberedToken); return; }
+-        }catch(_){}
+         try{ localStorage.removeItem("vp_demo_token"); }catch(e){}
+         try{ localStorage.removeItem("_vp_t"); }catch(e){}
+         try{ sessionStorage.removeItem("vp_demo_token"); }catch(e){}
+@@ -787,7 +712,7 @@
+     return false;
+ }
+ 
+-function ppIsAdmin() { if (CURRENT_USER?.role === 'admin') return true; try { const t = String(CURRENT_USER?._rawToken || safeLSGet("vp_demo_token","") || sessionStorage.getItem("vp_demo_token") || "").trim(); if (t === "ADM-MAUA-adm") return true; } catch (e) { } return false; }
++function ppIsAdmin() { if (CURRENT_USER?.role === 'admin') return true; try { const t = String(CURRENT_USER?._rawToken || safeLSGet("vp_demo_token","") || sessionStorage.getItem("vp_demo_token") || "").trim();  } catch (e) { } return false; }
+ 
+ function ppTokenInit(s){ const n=ppNorm(s); return n.includes(' ') ? ppInitials(n) : n.replace(/[^a-z0-9]/g,''); }
+ 
+@@ -1011,7 +936,7 @@
+ 
+ async function fetchServerOverrides() {
+     try {
+-        const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get_role_overrides', token: 'ADM-MAUA-adm' }) });
++        const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get_role_overrides', token: _apiToken() }) });
+         if (!r.ok) return null;
+         const j = await r.json();
+         if (j && j.overrides && typeof j.overrides === 'object') {
+@@ -1041,18 +966,14 @@
+ 
+ async function saveServerOverrides(map) {
+     try {
+-        const adminTok = (CURRENT_USER && CURRENT_USER._rawToken) || localStorage.getItem('_vp_t') || 'ADM-MAUA-adm';
+-        let tok = adminTok;
+-        try { tok = atob(tok.split('').reverse().join('')); } catch (e) {}
+-        if (tok !== 'ADM-MAUA-adm') tok = CURRENT_USER && CURRENT_USER.role === 'admin' ? (CURRENT_USER._rawToken || 'ADM-MAUA-adm') : 'ADM-MAUA-adm';
+-        const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save_role_overrides', token: tok, overrides: map }) });
++        const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save_role_overrides', token: _apiToken(), overrides: map }) });
+         const j = await r.json().catch(() => ({}));
+         if (!r.ok) return { ok: false, error: j.error || r.statusText };
+         return { ok: true };
+     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+ }
+ 
+-function isNGNUser(user) { return !!user && (user._rawToken === "CB-MAUA-NGN-88KQBY" || !!user.isNGN || String(user.name||"").trim() === "Nguyễn Giang Nam"); }
++function isNGNUser(user) { return !!user && (!!user.isNGN || String(user.name||"").trim() === "Nguyễn Giang Nam"); }
+ 
+ function isUBNDTaskForNGN(x) {
+     if (!x) return false;
+@@ -1166,8 +1087,8 @@
+ function closeSetRolePasswordModal(){ try{ smoothCloseModal('setRolePasswordModal'); }catch(e){ const m=document.getElementById('setRolePasswordModal'); if(m) m.classList.remove('open'); } }
+ 
+ async function confirmSetRolePassword(){
+-    const val = String(document.getElementById('setRolePasswordInput')?.value||"");
+-    if (val !== '2095@2026') {
++    const val = String(document.getElementById('setRolePasswordInput')?.value||"").trim();
++    if (!(await verifyAdminToken(val))) {
+         const err=document.getElementById('setRolePasswordError'); if(err) err.style.display="block";
+         try{ showToast('error','Sai mật khẩu','Vui lòng kiểm tra lại.'); }catch(e){}
+         return;
+@@ -1187,45 +1108,13 @@
+ async function loadSetRoleTokens() {
+     const status = document.getElementById("setRoleStatus");
+     if (status) status.textContent = "Đang tải danh sách token...";
+-    const tokens = [];
+-    tokens.push({ token: "ADM-MAUA-adm", name: "Quản trị hệ thống", role: "admin", scope: "all", src: "admin", title: "", unit: "" });
+-    const tables = [
+-        { src: "officers", scope: "bch", role: "staff" },
+-        { src: "tt_btv_officers", scope: "ttbtv", role: "staff" },
+-        { src: "province_officers", scope: "province", role: "staff" },
+-        { src: "office_officers", scope: "office", role: "staff" },
+-        { src: "action_100_days_officers", scope: "action100", role: "department" }
+-    ];
+-    const headers = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
+-    for (const t of tables) {
+-        try {
+-            const r = await fetch(`${SUPABASE_URL}/rest/v1/${t.src}?select=id,name,token,title,unit&order=name`, { headers });
+-            if (!r.ok) continue;
+-            const arr = await r.json();
+-            if (!Array.isArray(arr)) continue;
+-            for (const o of arr) {
+-                const tok = String(o.token || "").trim();
+-                if (!tok) continue;
+-                let role = t.role;
+-                let scope = t.scope;
+-                if (tok.startsWith("CQ-")) {
+-                    role = "department";
+-                    scope = String(o.name || "").trim() === "VPUB" ? "vpub" : "action100";
+-                }
+-                if (String(o.name || "").trim() === "CV nhập liệu") {
+-                    role = "staff";
+-                    scope = "data_entry";
+-                }
+-                tokens.push({
+-                    token: tok,
+-                    name: String(o.name || "").trim(),
+-                    role, scope, src: t.src,
+-                    title: String(o.title || "").trim(),
+-                    unit: String(o.unit || "").trim()
+-                });
+-            }
+-        } catch (e) { console.warn("loadSetRoleTokens", t.src, e); }
+-    }
++    let tokens = [];
++    try {
++        const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list_tokens', token: _apiToken() }) });
++        const j = await r.json().catch(() => ({}));
++        if (r.ok && Array.isArray(j.tokens)) tokens = j.tokens;
++        else if (status) status.textContent = j.error || "Không tải được danh sách token.";
++    } catch (e) { console.warn("loadSetRoleTokens", e); }
+     SET_ROLE_TOKENS = tokens;
+     if (status) status.textContent = `Đã tải ${tokens.length} token. Tick workspace bổ sung rồi bấm Lưu.`;
+     renderSetRoleTable();
+@@ -1268,7 +1157,7 @@
+         }).join("");
+         const srcLabel = t.src === "admin" ? "Admin (hardcoded)" : t.src;
+         return `<tr>
+-            <td><code style="font-size:11px;background:#f1f5f9;padding:2px 6px;border-radius:4px">${esc(t.token)}</code></td>
++            <td><code style="font-size:11px;background:#f1f5f9;padding:2px 6px;border-radius:4px">${esc(maskToken(t.token))}</code></td>
+             <td><b>${esc(t.name)}</b><div style="font-size:11px;color:#64748b">${esc(t.title || "")}${t.unit ? " · " + esc(t.unit) : ""}</div></td>
+             <td><span class="set-role-role role-${esc(t.role)}">${esc(t.role)}</span></td>
+             <td>${esc(t.scope)}</td>
+@@ -1338,3 +1227,44 @@
+     }
+     renderSetRoleTable();
+ }
++
++
++// ===== Dùng chung: token hiện tại, che token, xác minh Admin phía máy chủ =====
++function _apiToken() {
++    return String((typeof CURRENT_USER !== "undefined" && CURRENT_USER && CURRENT_USER._rawToken) || (typeof _readStoredToken === "function" ? _readStoredToken() : "") || "").trim();
++}
++function maskToken(t) {
++    const s = String(t || "");
++    return s.length <= 10 ? "••••" : s.slice(0, 8) + "…" + s.slice(-3);
++}
++async function verifyAdminToken(candidate) {
++    const tok = String(candidate || "").trim();
++    if (!tok) return false;
++    try {
++        const r = await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verify_admin", token: tok }) });
++        return r.ok;
++    } catch (e) { return false; }
++}
++
++// ===== Gắn X-User-Token vào mọi yêu cầu tới Supabase để RLS phía CSDL xác thực quyền =====
++(function installSupabaseTokenHeader() {
++    if (window.__vpTokenFetch) return;
++    window.__vpTokenFetch = true;
++    const orig = window.fetch.bind(window);
++    window.fetch = function (input, init) {
++        try {
++            const url = typeof input === "string" ? input : (input && input.url) || "";
++            const base = (typeof SUPABASE_URL !== "undefined" && SUPABASE_URL) || (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.url) || "";
++            if (base && url.indexOf(base) === 0) {
++                const tok = _apiToken();
++                if (tok) {
++                    init = init ? Object.assign({}, init) : {};
++                    const h = new Headers(init.headers || (typeof input !== "string" && input.headers) || {});
++                    if (!h.has("X-User-Token")) h.set("X-User-Token", tok);
++                    init.headers = h;
++                }
++            }
++        } catch (e) { /* không chặn yêu cầu nếu gắn header lỗi */ }
++        return orig(input, init);
++    };
++})();
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/js/modules/prov-bch.js repo/vanphongsomaua-main/js/modules/prov-bch.js
+--- js/modules/prov-bch.js	2026-10-03 06:37:43.221506633 +0000
++++ js/modules/prov-bch.js	2026-10-03 06:40:26.439224020 +0000
+@@ -61,7 +61,7 @@
+         try { offRaw = await bchFetch(BCH_OFFICERS_API); }
+         catch (offErr) {
+             console.warn("BCH officers select chi tiết lỗi, thử select=*", offErr);
+-            offRaw = await bchFetch(`${SUPABASE_URL}/rest/v1/officers?select=*&order=id.asc`);
++            offRaw = await bchFetch(`${SUPABASE_URL}/rest/v1/officers?select=id,name,title,unit,note&order=id.asc`);
+         }
+         try { taskRaw = await bchFetch(BCH_TASKS_API); }
+         catch (taskErr) {
+@@ -818,7 +818,7 @@
+         try { offRaw = await provinceFetch(PROV_OFFICERS_API); }
+         catch (offErr) {
+             console.warn("PROV officers select chi tiết lỗi, thử select=*", offErr);
+-            offRaw = await provinceFetch(`${SUPABASE_URL}/rest/v1/province_officers?select=*&order=id.asc`);
++            offRaw = await provinceFetch(`${SUPABASE_URL}/rest/v1/province_officers?select=id,name,title,unit,note,created_at,updated_at&order=id.asc`);
+         }
+         try { taskRaw = await provinceFetch(PROV_TASKS_API); }
+         catch (taskErr) {
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/js/modules/ttbtv.js repo/vanphongsomaua-main/js/modules/ttbtv.js
+--- js/modules/ttbtv.js	2026-10-03 06:37:43.221541475 +0000
++++ js/modules/ttbtv.js	2026-10-03 06:40:26.438069938 +0000
+@@ -437,7 +437,7 @@
+         try { offRaw = await ttbtvFetch(TTBTV_OFFICERS_API); }
+         catch (offErr) {
+             console.warn("TTBTV officers select chi tiết lỗi, thử select=*", offErr);
+-            offRaw = await ttbtvFetch(`${SUPABASE_URL}/rest/v1/tt_btv_officers?select=*&order=id.asc`);
++            offRaw = await ttbtvFetch(`${SUPABASE_URL}/rest/v1/tt_btv_officers?select=id,name,title,unit,note,created_at,updated_at&order=id.asc`);
+         }
+         try { taskRaw = await ttbtvFetch(TTBTV_TASKS_API); }
+         catch (taskErr) {
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/js/modules/utils.js repo/vanphongsomaua-main/js/modules/utils.js
+--- js/modules/utils.js	2026-10-03 06:37:43.221586486 +0000
++++ js/modules/utils.js	2026-10-03 06:40:26.439659292 +0000
+@@ -213,8 +213,9 @@
+ 
+ async function deleteActivityLog(id) {
+     if (!CURRENT_USER || CURRENT_USER.role !== "admin") return;
+-    const pass = prompt("Nhập mật khẩu xác nhận xóa nhật ký:");
+-    if (pass !== "2095") return showToast("error", "Sai mật khẩu", "Không thể xóa bản ghi nhật ký.");
++    const pass = prompt("Nhập lại token Admin để xác nhận xóa nhật ký:");
++    if (pass === null) return;
++    if (!(await verifyAdminToken(pass))) return showToast("error", "Xác nhận không đúng", "Không thể xóa bản ghi nhật ký.");
+     const row = ACTIVITY_LOG_ROWS.find(x => Number(x.id) === Number(id));
+     const r = await fetch(`${SUPABASE_URL}/rest/v1/activity_logs?id=eq.${encodeURIComponent(id)}`, { method: "DELETE", headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } });
+     if (!r.ok) return showToast("error", "Không thể xóa nhật ký", await r.text());
+@@ -371,9 +372,9 @@
+     if (!CURRENT_USER || CURRENT_USER.role !== "admin") return;
+     const file = event.target && event.target.files && event.target.files[0];
+     if (!file) return;
+-    const entered = prompt("Nhập mật khẩu quản trị để xác nhận khôi phục dữ liệu:\n(Thao tác này sẽ GHI ĐÈ lên toàn bộ dữ liệu hiện tại)");
++    const entered = prompt("Nhập lại token Admin để xác nhận khôi phục dữ liệu:\n(Thao tác này sẽ GHI ĐÈ lên toàn bộ dữ liệu hiện tại)");
+     if (entered === null) { event.target.value = ""; return; }
+-    if (entered !== "2095@Admin!MauA!TheMinh@") { event.target.value = ""; showToast("error", "Sai mật khẩu", "Bạn cần mật khẩu quản trị để khôi phục dữ liệu."); return; }
++    if (!(await verifyAdminToken(entered))) { event.target.value = ""; showToast("error", "Xác nhận không đúng", "Cần token Admin hợp lệ để khôi phục dữ liệu."); return; }
+     if (!window.confirm("Khôi phục dữ liệu sẽ GHI ĐÈ lên dữ liệu hiện tại theo ID. Bạn chắc chắn muốn tiếp tục?")) { event.target.value = ""; return; }
+     setBackupStatus("Đang đọc tệp sao lưu...");
+     try {
+@@ -929,3 +930,13 @@
+ function ppNorm(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/Đ/g,'D').replace(/đ/g,'d').toLowerCase().trim(); }
+ 
+ function ppInitials(s){ const n=ppNorm(s); if(!n.includes(' ') && n.length<=6 && /^[a-z0-9]+$/.test(n)) return n; return n.split(/[^a-z0-9]+/).filter(Boolean).map(w=>w[0]).join(''); }
++
++
++// Chống chèn công thức khi xuất Excel/CSV: ô văn bản bắt đầu bằng = + @ hoặc - (không phải số) sẽ được thêm dấu ' phía trước
++function vpSafeCell(v) {
++    if (typeof v !== "string") return v;
++    return /^[=+@\t\r]/.test(v) || /^-[^\d.,\s]/.test(v) ? "'" + v : v;
++}
++function vpSafeSheet(rows) {
++    return (rows || []).map(r => Array.isArray(r) ? r.map(vpSafeCell) : r);
++}
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/md/Archive.md repo/vanphongsomaua-main/md/Archive.md
+--- md/Archive.md	2026-10-03 06:37:43.221801903 +0000
++++ md/Archive.md	2026-10-03 06:42:30.961377034 +0000
+@@ -6,7 +6,7 @@
+ 
+ - Sửa lỗi gửi email do không tìm thấy data -> lấy từ `window.DATA`.
+ - Chỉ hiển thị nút gửi email cho nhiệm vụ quá hạn/sắp hạn.
+-- Thêm nhật ký hoạt động, chỉ Admin xem, có nút Xóa (pass 2095), ghi vết cả thao tác xóa.
++- Thêm nhật ký hoạt động, chỉ Admin xem, có nút Xóa (xác nhận bằng token Admin), ghi vết cả thao tác xóa.
+ - Popup nhật ký: STT, thao tác, tài khoản, ngày hoàn thành, ghi chú. Đã bỏ bộ lọc chung gây xung đột.
+ - Popup gia hạn: có trường lý do, ghi chú Admin mẫu `Thêm lý do gia hạn từ [Hạn cũ] - [Hạn mới]: [Lý do]`.
+ - Giữ bố cục cũ, thêm cuộn ngang, thu gọn cột ngày/tài khoản.
+@@ -30,11 +30,11 @@
+ - Nội dung dài tự xuống dòng.
+ 
+ ## Cập nhật nhập liệu và token
+-- Thêm token `CQ-MAUA-CV` cho `CV nhập liệu`, được nhập liệu các workspace trừ Văn phòng.
++- Thêm token `CQ-MAUA-***` cho `CV nhập liệu`, được nhập liệu các workspace trừ Văn phòng.
+ - Bị chặn Văn phòng; các thao tác đăng nhập/thêm được ghi vào `activity_logs`.
+ - Chỉ được thêm mới, không sửa/xóa.
+-- Thêm nút `+ Thêm nhiệm vụ` riêng góc phải BCH, BTV, Tỉnh giao, chỉ hiện với `CQ-MAUA-CV`.
+-- Sửa lưu mới BCH, BTV, Tỉnh giao cho `CQ-MAUA-CV`; trường `Lãnh đạo phụ trách` là ô text tự nhập.
++- Thêm nút `+ Thêm nhiệm vụ` riêng góc phải BCH, BTV, Tỉnh giao, chỉ hiện với `CQ-MAUA-***`.
++- Sửa lưu mới BCH, BTV, Tỉnh giao cho `CQ-MAUA-***`; trường `Lãnh đạo phụ trách` là ô text tự nhập.
+ 
+ ## Sửa upload popup BCH
+ - Popup `Cập nhật nhiệm vụ BCH` không upload file gốc; khi chọn file sẽ lưu `attachment_name`, loại, kích thước.
+@@ -88,7 +88,7 @@
+ 
+ ## Token đăng nhập cán bộ
+ - Định dạng: `CB-MAUA-[viết tắt]-[secret]`, mỗi token dài 15 ký tự.
+-- Ví dụ: CB-MAUA-PVM-7KQ, CB-MAUA-NMT-4XR, VTK-8LM, VTL-2PD, LAM-6QZ, NTT-9HC, v.v.
++- Ví dụ: CB-MAUA-***, CB-MAUA-***, VTK-8LM, VTL-2PD, LAM-6QZ, NTT-9HC, v.v.
+ 
+ ## Phiên 04/09/2026 - Vinh danh + Tỉnh giao theo cây + TT/BTV + BCH + VP
+ - Vinh danh: cá nhân VP tính trong tháng (subtitle `Vinh danh trong tháng`); BCH tính NV hoàn thành nhiều nhất quý (`done>0`, popup chỉ NV hoàn thành).
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/md/CHANGES.md repo/vanphongsomaua-main/md/CHANGES.md
+--- md/CHANGES.md	2026-10-03 06:37:43.221818037 +0000
++++ md/CHANGES.md	2026-10-03 06:42:30.963984390 +0000
+@@ -1,4 +1,4 @@
+-- 22/09/2026: Token `CB-MAUA-VPDU` (Văn phòng Đảng ủy, scope office) sửa được nhiệm vụ của mình ở Tỉnh giao + BTV + KH100 ngày (khớp VPDU/van phong dang uy + userCan edit); js/legacy.js.
++- 22/09/2026: Token `CB-MAUA-***` (Văn phòng Đảng ủy, scope office) sửa được nhiệm vụ của mình ở Tỉnh giao + BTV + KH100 ngày (khớp VPDU/van phong dang uy + userCan edit); js/legacy.js.
+ - 22/09/2026: Fix mobile `mLogin is not defined` (relative `app.js`→`/app.js` 404 ở URL `/mobile`) → script tuyệt đối `/mobile/app.js`, `/js/config.js`; mobile/index.html.
+ - 22/09/2026: Popup Thêm TT/BTV xếp đúng thứ tự (Nguồn giao→...→Lãnh đạo→Chuyên viên tham mưu→Kết quả→Tệp→Ghi chú), chỉ reorder HTML giữ nguyên ID/data/logic; index.html.
+ - 22/09/2026: Popup Cập nhật TT/BTV chuyển Lãnh đạo phụ trách + Lãnh đạo UBND + Cơ quan chủ trì xuống dưới Nhiệm vụ thường xuyên; index.html.
+@@ -35,13 +35,13 @@
+ - 18/09/2026: Văn phòng thêm bộ lọc Tên cán bộ dòng mới (`#officeOfficerNameFilter` text, `bchFold` includes `owner`, debounce 280ms) + `applyFilters`/`resetFilters`; index.html js/legacy.js.
+ - 15/09/2026: Set role mở rộng 24 checkbox quyền (Xem/Thêm/Sửa/Xóa × 6 workspace) - auto-detect quyền hiện có theo role+scope, đánh dấu cam khi admin sửa khác mặc định; lưu cấu trúc `{token:{ws:{v,a,e,d}}}`; áp dụng qua `userCan(user, action, wsId)` + `_perms` gắn vào user khi login; index.html js/legacy.js css/style.css.
+ - 15/09/2026: Set role lưu server `role_overrides` (Supabase) để áp dụng mọi trình duyệt: `api/admin.js` thêm `get/save_role_overrides`, login trả `_perms`/`_extraScopes` cho token; `js/legacy.js` đồng bộ `fetch/saveServerOverrides`, `applyTokenMultiScope` ưu tiên `_perms` từ server; tạo bảng `role_overrides(token pk, perms jsonb)` trong `supabase_seed_tokens.sql`; api/admin.js js/legacy.js supabase_seed_tokens.sql.
+-- 15/09/2026: Set role áp dụng vào `canEditAction100Task`/`deleteAction100Task`: khi admin tick "Sửa"/"Xóa" VPUB/KH100 cho token (vd `CB-MAUA-NGN-88KQBY`) → bypass check khớp tên/cơ quan trong workspace đó, sửa được mọi nhiệm vụ. Token khác không tick → vẫn check như cũ; js/legacy.js.
++- 15/09/2026: Set role áp dụng vào `canEditAction100Task`/`deleteAction100Task`: khi admin tick "Sửa"/"Xóa" VPUB/KH100 cho token (vd `CB-MAUA-***`) → bypass check khớp tên/cơ quan trong workspace đó, sửa được mọi nhiệm vụ. Token khác không tick → vẫn check như cũ; js/legacy.js.
+ - 15/09/2026: Thêm mục 🔐 Set role trong Tiện ích (chỉ Admin): popup liệt kê token từ 5 bảng officers + Admin, checkbox 6 workspace (VP/BCH/TT-BTV/Tỉnh/KH100/VPUB), tick thêm để cấp quyền truy cập sidebar; lưu `localStorage` `vp_token_multiscope` (không đụng DB); index.html js/legacy.js css/style.css.
+ - 10/09/2026: BTV ngày `dd/mm/yyyy` + nút 📅 lịch popup dùng chung (4 ô thêm/sửa, chọn ngày tự cập nhật trạng thái), danh sách hiển thị Hạn/Ngày HT `dd/mm/yyyy` (giữ nguyên hạn dạng câu chữ); js/legacy.js js/main.js (`legacy.js?v=20260910-11`).
+ - 10/09/2026: Hiện trạng thái Thường xuyên ở VPUB (BTV đã đủ): badge + chip nhóm + bộ lọc, ô tick Admin trong popup sửa để gán/bỏ (lưu cột `status`); js/legacy.js index.html css/style.css js/main.js (`legacy.js?v=20260910-10`).
+-- 10/09/2026: Token `CQ-MAUA-CV` đăng nhập chỉ hiện Trang chủ + các menu được sửa (Tỉnh giao, TT/BTV, KH100, VPUB), ẩn VP Đảng ủy/BCH/KPI MTTQ/Tiện ích/Báo cáo; js/legacy.js js/main.js (`legacy.js?v=20260910-9`).
++- 10/09/2026: Token `CQ-MAUA-***` đăng nhập chỉ hiện Trang chủ + các menu được sửa (Tỉnh giao, TT/BTV, KH100, VPUB), ẩn VP Đảng ủy/BCH/KPI MTTQ/Tiện ích/Báo cáo; js/legacy.js js/main.js (`legacy.js?v=20260910-9`).
+ - 10/09/2026: Nhiệm vụ mới thêm lên đầu mọi danh sách drill-down: hàm chung `sortNewestFirst` (ngày tạo rồi `id` giảm dần) cho KPI trang chủ (`showHomeDrill`/`showStatsDrill`), drill VPUB, và chế độ Mới nhất của Văn phòng/BCH/TT-BTV/Tỉnh giao (thay vì `updated_at`); js/legacy.js js/main.js (`legacy.js?v=20260910-8`).
+-- 10/09/2026: Token `CQ-MAUA-CV` đăng nhập chỉ hiện mỗi Nhiệm vụ VPUB ở sidebar (ẩn mọi menu khác, nhóm tự bung sẵn); js/legacy.js js/main.js (`legacy.js?v=20260910-7`).
++- 10/09/2026: Token `CQ-MAUA-***` đăng nhập chỉ hiện mỗi Nhiệm vụ VPUB ở sidebar (ẩn mọi menu khác, nhóm tự bung sẵn); js/legacy.js js/main.js (`legacy.js?v=20260910-7`).
+ - 10/09/2026: Sidebar gom Nhiệm vụ VPUB + KPI MTTQ vào nhóm cha thu/mở `🏢 Các cơ quan khác` (`openOtherWorkspace`, giữ phân quyền cũ, tự ẩn nhóm khi cả 2 mục đều ẩn); index.html js/legacy.js js/main.js (`legacy.js?v=20260910-6`).
+ - 10/09/2026: Sửa lỗi không lưu được nhiệm vụ VPUB (PGRST204): body POST gửi `ubndSource` camelCase không có trong bảng, map tường minh sang `ubnd_source` + 12 cột snake_case đúng schema; js/legacy.js js/main.js (`legacy.js?v=20260910-5`).
+ - 10/09/2026: Drill-down KPI VPUB: bấm KPI mở popup `vpubDrillModal` liệt kê nhiệm vụ theo trạng thái (hạn `dd/mm/yyyy`), bấm dòng mở form sửa; nút `+ Thêm nhiệm vụ` mở popup `vpubAddTaskModal` đủ 13 trường (menu, lịch dùng chung), lưu xong tự đóng + reset; index.html js/legacy.js js/main.js (`legacy.js?v=20260910-4`).
+@@ -60,8 +60,8 @@
+ - 10/09/2026: Cây Tỉnh giao nút 📅 mở lịch popup tự vẽ (`ppCalPop`: chuyển tháng, Hôm nay/Xóa, ghi `dd/mm/yyyy`), thay lịch native hay lỗi; js/legacy.js; node --check pass.
+ - 10/09/2026: Cây Tỉnh giao ô Hạn/Ngày HT giữ `dd/mm/yyyy` + nút 📅 mở date picker (`ppOpenDatePicker`), non-admin vẫn khóa nút Hạn; js/legacy.js; node --check pass.
+ - 10/09/2026: Cây Tỉnh giao Admin sửa được Hạn/Ngày HT: `ppNormalizeDateInputs` giữ input gõ dở + `ppSyncTaskRoleUI` unlock admin cả khi thu gọn; js/legacy.js; node --check pass.
+-- 10/09/2026: Token Admin `ADM-MAUA-adm` mở full mọi trường cây Tỉnh giao (`ppIsAdmin` check token lưu + `ppScope100*` bypass admin); js/legacy.js; node --check pass.
+-- 09/09/2026: Token `CQ-MAUA-TVH1-MTTQ` là Admin KPI MTTQ riêng: quản lý mọi nhiệm vụ trong MTTQ nhưng không có quyền Admin toàn hệ thống.
++- 10/09/2026: Token Admin `<ADMIN_TOKEN>` mở full mọi trường cây Tỉnh giao (`ppIsAdmin` check token lưu + `ppScope100*` bypass admin); js/legacy.js; node --check pass.
++- 09/09/2026: Token `CQ-MAUA-***` là Admin KPI MTTQ riêng: quản lý mọi nhiệm vụ trong MTTQ nhưng không có quyền Admin toàn hệ thống.
+ - 09/09/2026: Thêm scope token MTTQ: 10 token cán bộ theo tên viết tắt, giới hạn sửa/xóa đúng nhiệm vụ của mình và cho phép thêm nhiệm vụ; api/admin.js, js/legacy.js, index.html.
+ - 09/09/2026: Biểu đồ KPI MTTQ chuyển sang dạng cột/thanh ngang, giữ drill-down theo cán bộ và trạng thái; js/legacy.js.
+ - 09/09/2026: KPI MTTQ thêm drill-down cho danh sách/biểu đồ, biểu đồ cột chồng theo cán bộ và thẻ sắp đến hạn 3/7 ngày; index.html, js/legacy.js, css/style.css.
+@@ -72,7 +72,7 @@
+ - 09/09/2026: Tô đậm cả nhãn và tên cơ quan cụ thể trong chi tiết nhiệm vụ Tỉnh giao; js/legacy.js.
+ - 09/09/2026: Tô đậm nhãn Cơ quan phụ trách trong chi tiết nhiệm vụ mở rộng danh sách cũ Tỉnh giao; js/legacy.js.
+ - 09/09/2026: VPUB lưu độc lập `leader` (Lãnh đạo xã) và `office_leader` (Lãnh đạo cơ quan), không ghi đè lẫn nhau; js/legacy.js.
+-- 09/09/2026: Sửa lỗi VPUB không lưu Lãnh đạo xã phụ trách và cho phép token `CQ-MAUA-CV` cập nhật Tên nhiệm vụ; js/legacy.js.
++- 09/09/2026: Sửa lỗi VPUB không lưu Lãnh đạo xã phụ trách và cho phép token `CQ-MAUA-***` cập nhật Tên nhiệm vụ; js/legacy.js.
+ - 09/09/2026: Sửa trạng thái TT/BTV: có Ngày hoàn thành thì so sánh đúng với Hạn, không báo Quá hạn khi đã nhập đủ ngày; js/legacy.js.
+ - 09/09/2026: Biểu đồ Thời hạn xử lý Tỉnh giao gộp Còn hạn và Chưa rõ hạn thành một nhóm, drill-down lọc cả hai loại; js/legacy.js.
+ - 09/09/2026: Biểu đồ Số nhiệm vụ Tỉnh giao đếm tổng nhiệm vụ theo từng cơ quan trong cây, không theo tên lãnh đạo; js/legacy.js.
+@@ -100,7 +100,7 @@
+ - 09/09/2026: Nguồn giao danh sách cũ Tỉnh giao lấy văn bản tỉnh cụ thể từ nhiệm vụ chính, fallback `Văn bản của tỉnh`; không ghi ngược dữ liệu; js/legacy.js.
+ - 09/09/2026: Danh sách cũ Tỉnh giao cố định Nguồn giao là `Văn bản của tỉnh`, không thay đổi dữ liệu nguồn; js/legacy.js.
+ - 09/09/2026: Danh sách cũ Tỉnh giao hiển thị theo nhóm mở rộng giống TT/BTV, chỉ đổi giao diện và giữ nguyên dữ liệu cũ/cây thư mục; index.html js/legacy.js css/style.css.
+-- 08/09/2026: Cấp quyền token `CQ-MAUA-CV` xóa nhiệm vụ trong workspace VPUB; js/legacy.js; node --check pass.
++- 08/09/2026: Cấp quyền token `CQ-MAUA-***` xóa nhiệm vụ trong workspace VPUB; js/legacy.js; node --check pass.
+ - 08/09/2026: Đồng bộ cột Cơ quan phối hợp VPUB với trường popup và lưu đúng `field`; cột Lãnh đạo lấy đúng `leader`; js/legacy.js; node --check pass.
+ - 08/09/2026: Popup VPUB đổi Cơ quan phối hợp thành dropdown dùng cùng danh sách Cơ quan phụ trách; index.html js/legacy.js; node --check pass.
+ - 08/09/2026: Trường ngày tháng VPUB chuyển sang nhập `dd/mm/yyyy`, tự định dạng và chuyển đổi đúng khi lưu; js/legacy.js; node --check pass.
+@@ -132,8 +132,8 @@
+ - 07/09/2026: Khóa CV Nhập liệu sửa Nội dung + Hạn hoàn thành ở TT/BTV, Tỉnh bảng cũ, KH100/VPUB (UI readonly + payload giữ giá trị cũ, chỉ Admin); js/legacy.js; node --check pass.
+ - 07/09/2026: Fix CV Nhập liệu ko vào được workspace (api/admin trả nhầm role department → staff/data_entry đồng bộ local, qua gate TT/BTV + Tỉnh + VPUB); api/admin.js; node --check pass.
+ - 07/09/2026: Fix đơ input popup Sửa TT/BTV (tooltip ẩn opacity 0 vẫn chặn click z 99999 → pointer-events none khi ẩn, auto khi hiện); css/style.css; git diff --check pass.
+-- 07/09/2026: Mở quyền CQ-MAUA-CV sửa hết trừ Văn phòng + BCH (Tỉnh bảng cũ full nghiệp vụ + cây 5 trường/agency, KH100/VPUB full trừ Ghi chú Admin, không xóa KH100/VPUB); js/legacy.js; node --check pass.
+-- 07/09/2026: Fix mất focus CQ-MAUA-CV (auto-focus không giật khi user đã bấm ô nhập + ẩn tooltip hover khi mở modal + chặn pointerdown); js/legacy.js; node --check pass.
++- 07/09/2026: Mở quyền CQ-MAUA-*** sửa hết trừ Văn phòng + BCH (Tỉnh bảng cũ full nghiệp vụ + cây 5 trường/agency, KH100/VPUB full trừ Ghi chú Admin, không xóa KH100/VPUB); js/legacy.js; node --check pass.
++- 07/09/2026: Fix mất focus CQ-MAUA-*** (auto-focus không giật khi user đã bấm ô nhập + ẩn tooltip hover khi mở modal + chặn pointerdown); js/legacy.js; node --check pass.
+ - 07/09/2026: TT/BTV thêm trạng thái Thường xuyên (key regular, chỉ Admin gán/bỏ qua checkbox, giữ nguyên logic auto cũ); js/legacy.js index.html css/style.css; node --check pass.
+ - 04/09/2026: Bỏ nút + Thêm người ở cây Tỉnh giao (giữ lưới 2 hàng, date-picker, Enter, badge); js/legacy.js; node --check pass.
+ - 04/09/2026: Token TT/BTV sửa được Lãnh đạo phụ trách nhiệm vụ của mình; js/legacy.js; node --check pass.
+@@ -302,7 +302,7 @@
+ - Test: node --check js/legacy.js (pass)
+ 
+ ## 2026-08-19 - Popup TT/BTV: danh sách cố định Cơ quan chủ trì, tooltip KPI
+-- Việc: danh sách Cơ quan chủ trì popup/drill/add dùng list cứng 10 cơ quan; tooltip KPI cards + chart tròn TT/BTV; check CQ-MAUA-CV TRƯỚC DEPARTMENT_TOKENS; mở office workspace → redirect TT/BTV; cột Cơ quan chủ trì dùng x.role/x.unit_name;补齐 done label cho biểu đồ
++- Việc: danh sách Cơ quan chủ trì popup/drill/add dùng list cứng 10 cơ quan; tooltip KPI cards + chart tròn TT/BTV; check CQ-MAUA-*** TRƯỚC DEPARTMENT_TOKENS; mở office workspace → redirect TT/BTV; cột Cơ quan chủ trì dùng x.role/x.unit_name;补齐 done label cho biểu đồ
+ - File: `js/legacy.js`, `index.html`
+ - Test: node --check js/legacy.js (pass)
+ 
+@@ -311,8 +311,8 @@
+ - File: `index.html`, `js/legacy.js`
+ - Test: node --check js/legacy.js (pass)
+ 
+-## 2026-08-19 - CQ-MAUA-CV: thêm/sửa/xóa chỉ trong BTV; lọc & tìm trong popup KPI TT/BTV
+-- Việc: CQ-MAUA-CV (data_entry) chỉ được thêm/sửa/xóa nhiệm vụ trong workspace TT/BTV, không quyền ở BCH/Tỉnh/100ngày/Văn phòng/Nhật ký; thêm popup KPI TT/BTV bộ lọc Cơ quan chủ trì (role), Lãnh đạo phụ trách (officer_name) + ô tìm mọi nội dung + nút Xóa lọc. BTV: CQ-MAUA-CV không được sửa Ghi chú của Admin (chỉ Admin).
++## 2026-08-19 - CQ-MAUA-***: thêm/sửa/xóa chỉ trong BTV; lọc & tìm trong popup KPI TT/BTV
++- Việc: CQ-MAUA-*** (data_entry) chỉ được thêm/sửa/xóa nhiệm vụ trong workspace TT/BTV, không quyền ở BCH/Tỉnh/100ngày/Văn phòng/Nhật ký; thêm popup KPI TT/BTV bộ lọc Cơ quan chủ trì (role), Lãnh đạo phụ trách (officer_name) + ô tìm mọi nội dung + nút Xóa lọc. BTV: CQ-MAUA-*** không được sửa Ghi chú của Admin (chỉ Admin).
+ - File: `js/legacy.js`, `index.html`
+ - Test: node --check js/legacy.js (pass), git diff --check (pass)
+ 
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/md/TASK_CONTEXT.md repo/vanphongsomaua-main/md/TASK_CONTEXT.md
+--- md/TASK_CONTEXT.md	2026-10-03 06:37:43.221864203 +0000
++++ md/TASK_CONTEXT.md	2026-10-03 06:42:30.965039845 +0000
+@@ -10,7 +10,7 @@
+ ## Các thay đổi đã hoàn thành (phiên vừa rồi)
+ 
+ ### 1. Sửa lỗi "token is not define" khi Admin sửa nhiệm vụ Văn phòng
+-- `js/legacy.js`: xóa 5 dòng thừa (logic đăng nhập `CQ-MAUA-CV`) dán nhầm vào hàm `renderAgencyTotalsChart()`. Lỗi từng làm gãy chuỗi render khi lưu nhiệm vụ.
++- `js/legacy.js`: xóa 5 dòng thừa (logic đăng nhập `CQ-MAUA-***`) dán nhầm vào hàm `renderAgencyTotalsChart()`. Lỗi từng làm gãy chuỗi render khi lưu nhiệm vụ.
+ 
+ ### 2. Sửa lỗi "lưu thành công nhưng không vào Supabase" (nhiệm vụ sheet không có office_tasks)
+ - `js/legacy.js` `saveEditTask()`: khi PATCH trả về mảng rỗng (không có bản ghi office_tasks khớp), tự INSERT mới vào `office_tasks` để thay đổi thực sự được lưu.
+@@ -21,11 +21,11 @@
+ ### 4. Tính năng Sao lưu/Khôi phục dữ liệu (chỉ Admin)
+ - `index.html`: mục menu "🛡️ Sao lưu dữ liệu" (`backupSidebarItem`) + modal `backupModal`.
+ - `js/legacy.js`: `openBackupModal`, `closeBackupModal`, `backupData`, `restoreBackup`, hằng `BACKUP_TABLES` (12 bảng). Export JSON, restore upsert theo `on_conflict=id`.
+-- Khôi phục yêu cầu đúng password `2095@Admin!MauA!TheMinh@` (dùng `prompt` rồi `confirm`).
++- Khôi phục yêu cầu đúng password (mật khẩu cũ đã bãi bỏ) (dùng `prompt` rồi `confirm`).
+ - `css/style.css`: thêm `.backup-dialog`, `.backup-body`, `.backup-status`.
+ 
+ ### 5. Siết quyền xem data Văn phòng
+-- Chỉ **Admin**, `CQ-MAUA-CV` (data_entry), và **token Văn phòng** (staff·office) được xem workspace Văn phòng.
++- Chỉ **Admin**, `CQ-MAUA-***` (data_entry), và **token Văn phòng** (staff·office) được xem workspace Văn phòng.
+ - `js/legacy.js` thêm `canAccessOfficeData(user)`. Áp dụng vào:
+   - `syncUserWorkspaceVisibility` (ẩn menu), `openOfficeWorkspace` (chặn mở).
+   - `getAllHomeTasks`, `renderCharts`, `renderAgencyTotalsChart`, `updateGlobalHonors`, `openHonorBestTasks`, `openHomeTaskDrill`, `handleChartDrill`(chart1), `handleOfficeChartDrill`, `drillTask`, `openCurrentUserTasks`.
+@@ -46,7 +46,7 @@
+ - Luôn chạy `node --check js/*.js` sau khi sửa. Dự án không có `package.json` nên không có lint/build thật.
+ 
+ ## Bước tiếp theo khi mở phiên mới
+-1. **Kiểm tra thực tế trên trình duyệt** bộ lọc Trang chủ & quyền Văn phòng với các token: Admin, staff·office, `CQ-MAUA-CV`, một token BCH, một token department (`CQ-MAUA-*`).
++1. **Kiểm tra thực tế trên trình duyệt** bộ lọc Trang chủ & quyền Văn phòng với các token: Admin, staff·office, `CQ-MAUA-***`, một token BCH, một token department (`CQ-MAUA-*`).
+ 2. Xác nhận biểu đồ Top-10 & biểu đồ tổng (chartBar) hiển thị đúng theo từng quyền/bộ lọc.
+ 3. Kiểm tra luồng Sao lưu → tải JSON → Khôi phục bằng đúng password; xác nhận không hỏng 12 bảng.
+ 4. Nếu có yêu cầu tiếp theo (thắt quyền VPUB chỉ `CQ-VPUB-MAUA`/Admin, cấp quyền riêng cho lãnh đạo, v.v.) — hiện đề bài chỉ ghi chú "tính sau".
+@@ -85,7 +85,7 @@
+ ### 1. KH 100 ngày siết scope sửa + cột Thao tác
+ - `js/legacy.js:6481` `canEditAction100Task` chỉ cho `scope: action100` nếu `commune_leader`/`unit_name` (VPUB `unit`/`field`) khớp không dấu với `CURRENT_USER.name` (chuẩn hoá NFD, bỏ `CB`/`CQ`, `includes` 2 chiều). VD `Công an xã`/`Cong an` đều khớp `Công an`.
+ - `js/legacy.js:6375` `renderAction100Table` chỉ hiện nút `Sửa` khi `canEditAction100Task`.
+-- Token `CQ-MAUA-BANXDD` `Ban XDD`→`Ban Xây dựng Đảng` (`js/legacy.js:22`), `CQ-MAUA-UBNDXA` chuẩn hoá `UBND xã`, thêm `CQ-MAUA-UBND`=`UBND`.
++- Token `CQ-MAUA-***` `Ban XDD`→`Ban Xây dựng Đảng` (`js/legacy.js:22`), `CQ-MAUA-***` chuẩn hoá `UBND xã`, thêm `CQ-MAUA-***`=`UBND`.
+ 
+ ### 2. Bộ lọc
+ - KH100: `index.html:1102` thêm `#action100Agency` (distinct `commune_leader`/`unit_name`), `js/legacy.js:6348` `populateAction100AgencyFilter` + lọc không dấu `renderAction100Table:6355` + `reset/load`.
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/md/fix.md repo/vanphongsomaua-main/md/fix.md
+--- md/fix.md	2026-10-03 06:37:43.221907788 +0000
++++ md/fix.md	2026-10-03 06:42:30.965602563 +0000
+@@ -17,7 +17,7 @@
+ 
+ ## Gợi ý test thủ công
+ 
+-1. **Office Thêm nhiệm vụ**: Đăng nhập `ADM-MAUA-adm` → Văn phòng → Tất cả nhiệm vụ → `+ Thêm nhiệm vụ` → nhập nhiệm vụ `AB` (2 ký tự), Vai trò `PH`, Hạn `03/09/2026` → Xác nhận → Kiểm tra toast `Đã thêm` và dòng mới hiện trong `Tất cả nhiệm vụ`, không lỗi `Không thể chuẩn hóa`. Thử nhiệm vụ `1` ký tự phải bị chặn.
++1. **Office Thêm nhiệm vụ**: Đăng nhập `<ADMIN_TOKEN>` → Văn phòng → Tất cả nhiệm vụ → `+ Thêm nhiệm vụ` → nhập nhiệm vụ `AB` (2 ký tự), Vai trò `PH`, Hạn `03/09/2026` → Xác nhận → Kiểm tra toast `Đã thêm` và dòng mới hiện trong `Tất cả nhiệm vụ`, không lỗi `Không thể chuẩn hóa`. Thử nhiệm vụ `1` ký tự phải bị chặn.
+ 2. **BCH/TTBTV/Tỉnh**: Tương tự mỗi workspace → thêm nhiệm vụ ngắn 2 ký tự, check fallback không sập.
+ 3. **Filter/search**: Gõ search rác `xyz` trong mỗi workspace → không crash `includes`, bảng trả `0` dòng. Xóa filter → hiện lại.
+ 4. **RLS**: Tạm `ENABLE RLS` không policy trên `tasks` trên Supabase → reload BCH → phải thấy lỗi rõ `(RLS chặn)` thay vì im lặng dùng cache.
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/md/red-tem-attack.txt repo/vanphongsomaua-main/md/red-tem-attack.txt
+--- md/red-tem-attack.txt	2026-10-03 06:37:43.221942551 +0000
++++ md/red-tem-attack.txt	2026-10-03 06:42:30.965907352 +0000
+@@ -1,8 +1,8 @@
+ Plan Red-team bypass sau mức 2 - Chỉ phân tích, không thực thi
+-Giả định đã triển khai: RLS bật officers (chặn GET .../officers?select=token anon), localStorage["_vp_t"] btoa-reverse js/legacy.js:12, *_officers_cache token-only obf js/legacy.js:28, chặn F12/Ctrl+Shift+I/U toast js/legacy.js:30, fallback ADM-MAUA-adm chỉ còn join("-"):655.
++Giả định đã triển khai: RLS bật officers (chặn GET .../officers?select=token anon), localStorage["_vp_t"] btoa-reverse js/legacy.js:12, *_officers_cache token-only obf js/legacy.js:28, chặn F12/Ctrl+Shift+I/U toast js/legacy.js:30, fallback <ADMIN_TOKEN> chỉ còn join("-"):655.
+ Kết luận: chặn F12 + obf chỉ làm khó user thường, không chặn được Red-team có console.
+ 1. Bypass lưu trữ (dễ nhất, không cần Network)
+-- Deobf _vp_t: Application > Local Storage > _vp_t copy MUEyUUs3... -> Console: atob(localStorage.getItem("_vp_t")).split('').reverse().join('') -> ra ADM-MAUA-adm hoặc CB-MAUA-... (_deobfToken:14). Tương tự *_officers_cache -> JSON.parse(localStorage.getItem("bch_officers_cache")).map(o=> ({...o, token: atob(o.token).split('').reverse().join('')})) -> lộ cả 29 token BCH dù đã obf (_deobfOfficers:18 check pattern CB-/CQ-/ADM- nên deobf thành công).
++- Deobf _vp_t: Application > Local Storage > _vp_t copy MUEyUUs3... -> Console: atob(localStorage.getItem("_vp_t")).split('').reverse().join('') -> ra <ADMIN_TOKEN> hoặc CB-MAUA-... (_deobfToken:14). Tương tự *_officers_cache -> JSON.parse(localStorage.getItem("bch_officers_cache")).map(o=> ({...o, token: atob(o.token).split('').reverse().join('')})) -> lộ cả 29 token BCH dù đã obf (_deobfOfficers:18 check pattern CB-/CQ-/ADM- nên deobf thành công).
+ - Đọc memory: Console: CURRENT_USER._rawToken js/legacy.js:541 hoặc JSON.parse(localStorage.getItem("vp_demo_user"))._rawToken - không obf. let CURRENT_USER là global, không trong closure/IIFE nên window.CURRENT_USER đọc được.
+ - Tắt handler chặn: DevTools > Sources > Page > legacy.js:30 đặt breakpoint dòng e.preventDefault(), hoặc chạy document.onkeydown=null; window.onkeydown=null; rồi F12 lại, hoặc mở DevTools qua Menu > More tools thay vì phím tắt nên handler keydown không bắt.
+ 2. Bypass chặn phím
+@@ -12,7 +12,7 @@
+ - RLS đã bật nên curl -H "apikey: anon" /rest/v1/officers?select=token sẽ 401/42501 - không lộ. Nhưng nếu Red-team có 1 token hợp lệ (lấy từ deobf ở bước 1), dùng nó POST /api/admin sẽ được 200 và server trả role/scope, sau đó dùng anonKey vẫn GET /rest/v1/tasks?select=* (tasks không chặn) để đọc toàn bộ nhiệm vụ, dù không có token officers.
+ - uploadBCHTaskFile:4024 trả path="" nên không có Storage để bypass, nhưng DELETE /storage/v1/object/task-files/... vẫn thử được nếu có path cũ.
+ 4. Plan lab chứng minh (không sửa prod)
+-1. Mở trang đã đăng nhập với ADM-MAUA-adm, Console: localStorage.getItem("_vp_t") -> deobf -> so sánh với ["ADM","MAUA","adm"].join("-").
++1. Mở trang đã đăng nhập với <ADMIN_TOKEN>, Console: localStorage.getItem("_vp_t") -> deobf -> so sánh với ["ADM","MAUA","adm"].join("-").
+ 2. Console: JSON.parse(localStorage.getItem("bch_officers_cache"))[0].token -> deobf -> kiểm tra ra CB-MAUA-....
+ 3. Tắt JS chặn: getEventListeners(document).keydown.forEach(l=>document.removeEventListener('keydown',l.listener)) -> F12 lại không toast.
+ 4. Ghi nhận: không cần brute-force, không cần POST sửa DB, chỉ đọc.
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/mobile/app.js repo/vanphongsomaua-main/mobile/app.js
+--- mobile/app.js	2026-10-03 06:37:43.221990483 +0000
++++ mobile/app.js	2026-10-03 06:40:26.447783317 +0000
+@@ -29,7 +29,7 @@
+   return n > 0 ? "Còn " + n + " ngày" : n === 0 ? "Hết hạn hôm nay" : "Trễ " + Math.abs(n) + " ngày";
+ }
+ /* Supabase REST */
+-function sbH() { return { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json" }; }
++function sbH() { return { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json", "X-User-Token": (typeof MTOKEN === "string" ? MTOKEN : "") }; }
+ async function sbGet(table, select) {
+   const c = new AbortController(), to = setTimeout(() => c.abort(), 25000);
+   try {
+@@ -69,43 +69,12 @@
+     const r = await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "login", token }) });
+     const u = await r.json().catch(() => ({}));
+     if (r.ok && u && u.role) { setMU(u, token); return; }
+-    const direct = await mResolveToken(token);
+-    if (direct) { setMU(direct, token); return; }
+     err.textContent = (u && u.error) || "Token không hợp lệ.";
+   } catch (e) {
+-    try { const direct = await mResolveToken(token); if (direct) { setMU(direct, token); return; } } catch (_) {}
+     err.textContent = "Không kết nối được máy chủ xác thực.";
+   }
+   finally { btn.disabled = false; btn.textContent = "🔐 Đăng nhập"; }
+ }
+-/* Du phong doc truc tiep Supabase nhu ban desktop */
+-async function mResolveToken(token) {
+-  const q = encodeURIComponent(token);
+-  const eps = [
+-    { scope: "bch", url: SB_URL + "/rest/v1/officers?select=id,name,token,title,unit&token=eq." + q + "&limit=1" },
+-    { scope: "ttbtv", url: SB_URL + "/rest/v1/tt_btv_officers?select=id,name,token,title,unit&token=eq." + q + "&limit=1" },
+-    { scope: "province", url: SB_URL + "/rest/v1/province_officers?select=id,name,token,title,unit&token=eq." + q + "&limit=1" },
+-    { scope: "office", url: SB_URL + "/rest/v1/office_officers?select=id,name,token,title&token=eq." + q + "&limit=1" },
+-    { scope: "action100", url: SB_URL + "/rest/v1/action_100_days_officers?select=id,name,token,title,unit&token=eq." + q + "&limit=1" }
+-  ];
+-  for (const ep of eps) {
+-    try {
+-      const r = await fetch(ep.url, { headers: sbH() });
+-      if (!r.ok) continue;
+-      const arr = await r.json();
+-      if (Array.isArray(arr) && arr[0] && String(arr[0].token || "").trim() === token) {
+-        const o = arr[0], name = String(o.name || "").trim(), isNGN = name === "Nguyễn Giang Nam";
+-        if (String(token).startsWith("CQ-")) {
+-          const ds = name === "VPUB" ? "vpub" : "action100";
+-          return { id: "department-" + o.id, name, role: "department", scope: ds, title: String(o.title || "").trim(), unit: String(o.unit || "").trim(), isNGN };
+-        }
+-        if (name === "CV nhập liệu") return { id: "cv-" + o.id, name, role: "staff", scope: "data_entry", title: String(o.title || "").trim(), unit: String(o.unit || "").trim(), isNGN };
+-        return { id: ep.scope + "-" + o.id, name, role: "staff", scope: ep.scope, title: String(o.title || "").trim(), unit: String(o.unit || "").trim(), isNGN };
+-      }
+-    } catch (e) {}
+-  }
+-  return null;
+-}
+ function setMU(u, token) {
+   MU = u; MTOKEN = token || "";
+   lsSet("vp_mobile_user", JSON.stringify(u)); lsSet("vp_mobile_token", MTOKEN);
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' "orig/quy t#U1eafc l#U00e0m vi#U1ec7c.txt" "repo/vanphongsomaua-main/quy t#U1eafc l#U00e0m vi#U1ec7c.txt"
+--- "orig/quy t#U1eafc l#U00e0m vi#U1ec7c.txt"	2026-10-03 06:37:43.654249536 +0000
++++ "repo/vanphongsomaua-main/quy t#U1eafc l#U00e0m vi#U1ec7c.txt"	2026-10-03 06:42:30.968324854 +0000
+@@ -85,6 +85,6 @@
+ - supabase/functions/send-email/index.ts: Edge Function email.
+ - Data: Supabase REST API.
+ Bảng: activity_logs, province_tasks, bch_tasks, ttbtv_tasks, vpub_tasks, action_100_days_tasks, action_100_days_officers.
+-Phân quyền: Admin full, CQ-MAUA-CV thêm mới, CQ-MAUA-* scope action100, CQ-VPUB-MAUA xem/VPUB, CB-MAUA-* cá nhân.
++Phân quyền: Admin full, CQ-MAUA-*** thêm mới, CQ-MAUA-* scope action100, CQ-VPUB-MAUA xem/VPUB, CB-MAUA-* cá nhân.
+ Kiểm tra: node --check js/legacy.js, git diff --check. Không lint/build
+ =====
+\ No newline at end of file
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/sql/README-RLS.md repo/vanphongsomaua-main/sql/README-RLS.md
+--- sql/README-RLS.md	2026-10-03 06:37:43.654663820 +0000
++++ sql/README-RLS.md	2026-10-03 06:44:10.771537793 +0000
+@@ -1,152 +1,62 @@
+-# ==========================================================================
+-# HƯỚNG DẪN MIGRATE APP SANG RLS + EDGE FUNCTION
+-# Thực hiện SAU khi chạy SQL Phase 1 (rls-setup.sql)
+-# ==========================================================================
+-
+-## 1. TRẠNG THÁI HIỆN TẠI
+-- App gửi tất cả requests (GET/POST/PATCH/DELETE) trực tiếp đến Supabase REST API
+-- Headers chỉ có: apikey + Authorization (anon key)
+-- Không gửi token người dùng → RLS Phase 2 sẽ chặn writes
++# Triển khai bản vá bảo mật — Văn phòng số Mậu A
+ 
+-## 2. CÁI CẦM
++Làm đúng thứ tự. Mỗi bước có cách kiểm tra; chưa đạt thì chưa sang bước sau.
++Nên thử trên một dự án Vercel preview và (nếu được) một dự án Supabase thử nghiệm trước.
+ 
+-### 2a. Deploy Phase 1 SQL (RLS cho reads, anon writes allowed)
+-```bash
+-# Trong Supabase Dashboard → SQL Editor
+-# Paste nội dung sql/rls-setup.sql và chạy
+-```
+-
+-### 2b. Deploy Edge Function
+-```bash
+-supabase functions deploy secure-write --no-verify-jwt
+-```
++## Bước 0 — Sao lưu
++- Supabase Dashboard > Database > Backups (hoặc dùng nút "Sao lưu" trong ứng dụng khi còn đăng nhập Admin).
++- Cất tệp sao lưu NGOÀI kho mã (tệp này chứa token của cán bộ).
+ 
+-### 2c. Set SERVICE_ROLE_KEY trong Edge Function env
++## Bước 1 — Tạo token Admin mới
+ ```bash
+-supabase secrets set SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+-```
+-(Lấy key từ Supabase Dashboard → Settings → API → service_role key)
+-
+-## 3. SỬA APP - THÊM X-User-Token HEADER
+-
+-Trong `js/legacy.js`, tìm tất cả `fetch(` calls và thêm header:
+-
+-### Trước:
+-```javascript
+-const r = await fetch(`${SUPABASE_URL}/rest/v1/tasks`, {
+-  method: "PATCH",
+-  headers: {
+-    apikey: SUPABASE_KEY,
+-    Authorization: `Bearer ${SUPABASE_KEY}`,
+-    "Content-Type": "application/json",
+-  },
+-  body: JSON.stringify({ ... })
+-});
+-```
+-
+-### Sau:
+-```javascript
+-const userToken = localStorage.getItem("_vp_t") || "";
+-const r = await fetch(`${SUPABASE_URL}/rest/v1/tasks`, {
+-  method: "PATCH",
+-  headers: {
+-    apikey: SUPABASE_KEY,
+-    Authorization: `Bearer ${SUPABASE_KEY}`,
+-    "Content-Type": "application/json",
+-    "X-User-Token": userToken,  // ← THÊM DÒNG NÀY
+-  },
+-  body: JSON.stringify({ ... })
+-});
+-```
+-
+-### Hàm helper thêm vào `js/legacy.js`:
+-```javascript
+-function getAuthHeaders() {
+-  const token = localStorage.getItem("_vp_t") || "";
+-  return {
+-    "apikey": SUPABASE_KEY,
+-    "Authorization": `Bearer ${SUPABASE_KEY}`,
+-    "Content-Type": "application/json",
+-    "X-User-Token": token,
+-  };
+-}
+-```
+-
+-## 4. MIGRATE WRITE OPERATIONS SANG EDGE FUNCTION
+-
+-Các hàm write trong `js/legacy.js` cần chuyển sang dùng Edge Function:
+-
+-### 4a. Tạo hàm wrapper trong `js/legacy.js`:
+-```javascript
+-async function secureWrite(table, method, data, id) {
+-  const token = localStorage.getItem("_vp_t") || "";
+-  const response = await fetch(
+-    `${SUPABASE_URL}/functions/v1/secure-write`,
+-    {
+-      method: "POST",
+-      headers: {
+-        "Content-Type": "application/json",
+-        "X-User-Token": token,
+-        "Authorization": `Bearer ${SUPABASE_KEY}`,
+-      },
+-      body: JSON.stringify({ table, method, data, id }),
+-    }
+-  );
+-  return response.json();
+-}
+-```
+-
+-### 4b. Thay thế các call trực tiếp:
+-
+-**Ví dụ: deleteOfficeTask()**
+-- Trước: `fetch(URL, { method: "DELETE", headers: {...} })`
+-- Sau: `secureWrite("office_tasks", "DELETE", null, x.id)`
+-
+-**Ví dụ: lưu nhiệm vụ**
+-- Trước: `fetch(URL, { method: "PATCH", body: JSON.stringify({...}) })`
+-- Sau: `secureWrite("office_tasks", "PATCH", {...}, x.id)`
+-
+-## 5. THỨ TỰ KIỂM TRA SAU KHI DEPLOY
+-
+-1. ✅ Trang chủ load được (reads vẫn hoạt động)
+-2. ✅ Login bằng token vẫn được
+-3. ✅ Thêm nhiệm vụ mới vẫn lưu được
+-4. ✅ Sửa nhiệm vụ vẫn cập nhật được
+-5. ✅ Xóa nhiệm vụ vẫn xóa được
+-6. ✅ Toast thông báo vẫn hiện đúng
+-7. ✅ Filter/search vẫn hoạt động
+-8. ✅ Charts vẫn render
+-
+-## 6. ROLLBACK NẾU LỖI
+-
+-Nếu web lỗi sau khi bật RLS:
+-```sql
+--- Tắt RLS tạm thời
+-ALTER TABLE public.officers DISABLE ROW LEVEL SECURITY;
+-ALTER TABLE public.tasks DISABLE ROW LEVEL SECURITY;
+--- ... tương tự các bảng khác
+-```
+-
+-Hoặc xóa tất cả policies:
+-```sql
+-DROP POLICY IF EXISTS "rls_officers_select" ON public.officers;
+-DROP POLICY IF EXISTS "rls_officers_anon_write" ON public.officers;
+--- ... tương tự
++openssl rand -hex 24          # ra chuỗi 48 ký tự: đây là token Admin mới
++printf '%s' 'CHUỖI-VỪA-TẠO' | sha256sum   # ra mã băm 64 ký tự dùng ở Bước 4
+ ```
++Token cũ `ADM-MAUA-adm` coi như đã lộ và không còn dùng được sau khi triển khai mã mới.
+ 
+-## 7. FILE ĐÃ TẠO
++## Bước 2 — Cấu hình Vercel và triển khai mã
++Vercel > Settings > Environment Variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_TOKEN` (xem env.example.txt).
++Triển khai thư mục này. Kiểm tra:
++1. Đăng nhập bằng token Admin MỚI → vào được. Token `ADM-MAUA-adm` → bị từ chối.
++2. Đăng nhập bằng một token cán bộ và một token cơ quan (CQ-*) → vào được, thấy đúng workspace.
++3. Mở Set role → hỏi nhập lại token Admin; danh sách token hiển thị dạng che (`CB-MAUA-…xyz`).
++Ở bước này RLS Phase 1 vẫn đang chạy nên ứng dụng hoạt động như cũ; client đã bắt đầu gửi header `X-User-Token`.
+ 
+-| File | Mục đích |
+-|------|----------|
+-| `sql/rls-setup.sql` | Phase 1 - RLS cho reads + anon writes |
+-| `sql/rls-phase2.sql` | Phase 2 - Siết chặt viết (yêu cầu token) |
+-| `supabase/functions/secure-write/index.ts` | Edge Function proxy cho writes |
+-| `supabase/functions/secure-write/deno.json` | Cấu hình Edge Function |
+-
+-## 8. LƯU Ý QUAN TRỌNG
+-
+-1. **Không xóa Phase 1 policies trước khi Phase 2 hoạt động**
+-2. **Test trên môi trường dev trước** (có thể dùng `?demo=1`)
+-3. **Backup database trước khi chạy RLS**: `npm run backup`
+-4. **F5 cứng Ctrl+Shift+R** sau khi deploy để bỏ cache
+-5. **Kiểm tra browser console** xem có error RLS không
++## Bước 3 — Edge Function
++```bash
++supabase functions delete secure-write           # không dùng, và có lỗ hổng
++supabase secrets set ADMIN_TOKEN='...' MAIL_FROM='Văn phòng số Mậu A <thongbao@miền-đã-xác-minh>' ALLOWED_ORIGINS='https://vanphongsomaua.vercel.app'
++supabase functions deploy send-email
++```
++Kiểm tra: gửi thử một thông báo hạn từ tài khoản Admin → thành công. Gọi thẳng bằng curl không kèm `x-user-token` → 401.
++
++## Bước 4 — RLS Phase 2A (chặn truy cập không có token)
++1. Mở `sql/rls-phase2a-token-required.sql`, thay mã băm ở BƯỚC 2 (bỏ `--` đầu dòng), chạy toàn bộ trong SQL Editor.
++2. Hard refresh trình duyệt (Ctrl+Shift+R), đăng nhập lại.
++Kiểm tra (thay `URL` và `ANON` bằng giá trị trong js/config.js):
++```bash
++# a) Không token: phải trả về [] (RLS chặn đọc)
++curl -s "URL/rest/v1/tasks?select=id&limit=1" -H "apikey: ANON" -H "Authorization: Bearer ANON"
++# b) Đọc cột token: phải báo lỗi permission denied
++curl -s "URL/rest/v1/officers?select=token&limit=1" -H "apikey: ANON" -H "Authorization: Bearer ANON" -H "X-User-Token: <TOKEN-CÁN-BỘ-HỢP-LỆ>"
++# c) Ghi không token: phải bị từ chối
++curl -s -X DELETE "URL/rest/v1/tasks?id=eq.-1" -H "apikey: ANON" -H "Authorization: Bearer ANON"
++```
++Nếu một chức năng bỗng hiện 0 dòng sau bước này: nhiều khả năng có chỗ gọi Supabase mà không đi qua `fetch` toàn cục (ví dụ iframe, tab mới). Cần thêm header `X-User-Token` ở chỗ đó. Cần quay lại ngay: `sql/rls-rollback.sql`, phần B.
++
++## Bước 5 — Thử toàn bộ chức năng bằng tài khoản thật (ít nhất 1 Admin, 1 cán bộ, 1 cơ quan CQ-*)
++Xem bảng kiểm thử trong báo cáo kế hoạch. Đặc biệt: thêm/sửa/xóa ở từng workspace, tải tệp đính kèm, xuất Excel/CSV, Set role, Sao lưu/Khôi phục, Gửi email.
++
++## Bước 6 — RLS Phase 2B (siết theo workspace) — sau vài ngày chạy ổn
++Chạy `sql/rls-phase2b-scope-strict.sql`. Cán bộ chỉ thêm/sửa được ở workspace của mình (và nơi Set role cấp thêm); xóa chỉ khi được cấp quyền `d`.
++Quay về 2A: `sql/rls-rollback.sql`, phần A.
++
++## Bước 7 — Xoay toàn bộ token
++Kho mã và lịch sử git từng chứa token, mật khẩu cũ và tệp sao lưu. Sau khi hệ thống ổn: cấp token mới cho toàn bộ cán bộ (cột `token` mỗi bảng), phát lại cho từng người, đồng thời thu hồi token cũ. Dọn lịch sử git (`git filter-repo`) nếu kho có thể bị chia sẻ rộng.
++
++## Còn lại sau các bước trên (rủi ro đã biết)
++- Token vẫn lưu ở trình duyệt dạng đảo chuỗi + base64 (che chữ, không phải mã hóa).
++- Cán bộ cùng workspace vẫn sửa được nhiệm vụ của nhau ở mức CSDL; chỉ giao diện hạn chế.
++- Chống dò token ở `api/admin.js` chỉ là best-effort (bộ nhớ từng instance) — nên bật Vercel Firewall rate limit cho `/api/admin`.
++- Chính sách của Supabase Storage (tệp đính kèm) chưa có trong kho mã: cần kiểm tra thủ công trên Dashboard > Storage > Policies.
++- `department_tasks`, `mttq_kpi_*`, `nq_tw` mới yêu cầu "token hợp lệ", chưa siết theo workspace.
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/sql/rls-phase2.sql repo/vanphongsomaua-main/sql/rls-phase2.sql
+--- sql/rls-phase2.sql	2026-10-03 06:37:43.654677159 +0000
++++ sql/rls-phase2.sql	1970-01-01 00:00:00.000000000 +0000
+@@ -1,154 +0,0 @@
+--- ==========================================================================
+--- RLS PHASE 2 - Văn phòng số Mậu A
+--- Chạy SAU khi đã migrate app sang Edge Functions (xem edge-function.js)
+--- ==========================================
+--- GIA HẠN: Xóa các policy anon_write ở Phase 1, thay bằng policy kiểm token
+--- ==========================================================================
+-
+--- ==========================================
+--- XÓA CÁC POLICY PHASE 1 (anon write)
+--- ==========================================
+-
+-DROP POLICY IF EXISTS "rls_officers_anon_write" ON public.officers;
+-DROP POLICY IF EXISTS "rls_ttbtv_officers_anon_write" ON public.tt_btv_officers;
+-DROP POLICY IF EXISTS "rls_province_officers_anon_write" ON public.province_officers;
+-DROP POLICY IF EXISTS "rls_office_officers_anon_write" ON public.office_officers;
+-DROP POLICY IF EXISTS "rls_action100_officers_anon_write" ON public.action_100_days_officers;
+-
+-DROP POLICY IF EXISTS "rls_tasks_anon_write" ON public.tasks;
+-DROP POLICY IF EXISTS "rls_ttbtv_tasks_anon_write" ON public.tt_btv_tasks;
+-DROP POLICY IF EXISTS "rls_province_tasks_anon_write" ON public.province_tasks;
+-DROP POLICY IF EXISTS "rls_province_plan_blocks_anon_write" ON public.province_plan_blocks;
+-DROP POLICY IF EXISTS "rls_action100_tasks_anon_write" ON public.action_100_days_tasks;
+-DROP POLICY IF EXISTS "rls_vpub_tasks_anon_write" ON public.vpub_tasks;
+-DROP POLICY IF EXISTS "rls_office_tasks_anon_write" ON public.office_tasks;
+-DROP POLICY IF EXISTS "rls_department_tasks_anon_write" ON public.department_tasks;
+-
+-DROP POLICY IF EXISTS "rls_mttq_people_anon_write" ON public.mttq_kpi_people;
+-DROP POLICY IF EXISTS "rls_mttq_catalog_anon_write" ON public.mttq_kpi_catalog;
+-DROP POLICY IF EXISTS "rls_mttq_tasks_anon_write" ON public.mttq_kpi_tasks;
+-
+-DROP POLICY IF EXISTS "rls_activity_anon_write" ON public.activity_logs;
+-
+--- ==========================================
+--- TẠO POLICIES PHASE 2: YÊU CẦU X-User-Token HỢP LỆ
+--- ==========================================
+-
+--- officers: chỉ token BCH mới được ghi
+-CREATE POLICY "rls_officers_write" ON public.officers
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) = 'bch'
+-  );
+-
+--- tt_btv_officers
+-CREATE POLICY "rls_ttbtv_officers_write" ON public.tt_btv_officers
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('ttbtv', 'bch')
+-  );
+-
+--- province_officers
+-CREATE POLICY "rls_province_officers_write" ON public.province_officers
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('province', 'bch')
+-  );
+-
+--- office_officers
+-CREATE POLICY "rls_office_officers_write" ON public.office_officers
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('office', 'bch')
+-  );
+-
+--- action_100_days_officers
+-CREATE POLICY "rls_action100_officers_write" ON public.action_100_days_officers
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('action100', 'vpub', 'bch')
+-  );
+-
+--- tasks
+-CREATE POLICY "rls_tasks_write" ON public.tasks
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('office', 'bch')
+-  );
+-
+--- tt_btv_tasks
+-CREATE POLICY "rls_ttbtv_tasks_write" ON public.tt_btv_tasks
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('ttbtv', 'bch')
+-  );
+-
+--- province_tasks
+-CREATE POLICY "rls_province_tasks_write" ON public.province_tasks
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('province', 'bch')
+-  );
+-
+--- province_plan_blocks
+-CREATE POLICY "rls_province_plan_blocks_write" ON public.province_plan_blocks
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('province', 'bch')
+-  );
+-
+--- action_100_days_tasks
+-CREATE POLICY "rls_action100_tasks_write" ON public.action_100_days_tasks
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('action100', 'vpub', 'bch')
+-  );
+-
+--- vpub_tasks
+-CREATE POLICY "rls_vpub_tasks_write" ON public.vpub_tasks
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('vpub', 'bch')
+-  );
+-
+--- office_tasks
+-CREATE POLICY "rls_office_tasks_write" ON public.office_tasks
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('office', 'bch')
+-  );
+-
+--- department_tasks
+-CREATE POLICY "rls_department_tasks_write" ON public.department_tasks
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) = 'admin'
+-  );
+-
+--- mttq_kpi_people
+-CREATE POLICY "rls_mttq_people_write" ON public.mttq_kpi_people
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('bch', 'admin')
+-  );
+-
+--- mttq_kpi_catalog
+-CREATE POLICY "rls_mttq_catalog_write" ON public.mttq_kpi_catalog
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('bch', 'admin')
+-  );
+-
+--- mttq_kpi_tasks
+-CREATE POLICY "rls_mttq_tasks_write" ON public.mttq_kpi_tasks
+-  FOR ALL USING (
+-    is_valid_token(get_request_token())
+-    AND get_token_scope(get_request_token()) IN ('mttq', 'bch')
+-  );
+-
+--- activity_logs: chỉ insert (delete vẫn admin)
+-CREATE POLICY "rls_activity_insert" ON public.activity_logs
+-  FOR INSERT WITH CHECK (is_valid_token(get_request_token()));
+-
+-CREATE POLICY "rls_activity_delete" ON public.activity_logs
+-  FOR DELETE USING (get_token_scope(get_request_token()) = 'admin');
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/sql/rls-phase2a-token-required.sql repo/vanphongsomaua-main/sql/rls-phase2a-token-required.sql
+--- sql/rls-phase2a-token-required.sql	1970-01-01 00:00:00.000000000 +0000
++++ sql/rls-phase2a-token-required.sql	2026-10-03 06:42:00.539150308 +0000
+@@ -0,0 +1,167 @@
++-- ==========================================================================
++-- RLS PHASE 2A — Văn phòng số Mậu A
++-- Mục tiêu: chấm dứt việc "ai có khóa anon cũng đọc/ghi được".
++--   * Mọi đọc/ghi phải kèm header X-User-Token là token hợp lệ.
++--   * Cột token của 5 bảng cán bộ không còn đọc được từ trình duyệt.
++--   * Bảng cán bộ chỉ Admin được ghi; role_overrides và app_admins chỉ service_role truy cập.
++--
++-- ĐIỀU KIỆN TRƯỚC KHI CHẠY (xem sql/README-RLS.md):
++--   1. Đã triển khai bản mã mới (client gửi X-User-Token) và đăng nhập thử thành công.
++--   2. Đã sao lưu CSDL (Dashboard > Database > Backups, hoặc nút Sao lưu trong ứng dụng).
++--   3. Chuẩn bị mã băm SHA-256 của token Admin MỚI:   printf '%s' 'TOKEN-ADMIN-MOI' | sha256sum
++--      rồi dán vào lệnh INSERT ở BƯỚC 2 (không dán token gốc vào SQL Editor).
++-- Chạy trong Supabase Dashboard > SQL Editor. Có thể chạy lại nhiều lần.
++-- ==========================================================================
++
++create extension if not exists pgcrypto with schema extensions;
++
++-- ---------- BƯỚC 1: bảng quản trị & role_overrides (chỉ service_role) ----------
++create table if not exists public.app_admins (
++  token_sha256 text primary key,
++  note text,
++  created_at timestamptz not null default now()
++);
++create table if not exists public.role_overrides (
++  token text primary key,
++  perms jsonb not null default '{}'::jsonb,
++  updated_by text,
++  updated_at timestamptz default now()
++);
++alter table public.app_admins enable row level security;
++alter table public.role_overrides enable row level security;
++revoke all on public.app_admins from anon, authenticated;
++revoke all on public.role_overrides from anon, authenticated;
++
++-- ---------- BƯỚC 2: đăng ký Admin (thay mã băm rồi bỏ dấu -- ở đầu dòng) ----------
++-- insert into public.app_admins (token_sha256, note) values ('<MÃ-BĂM-SHA256-64-KÝ-TỰ>', 'Admin chính')
++--   on conflict do nothing;
++
++-- ---------- BƯỚC 3: hàm xác định người gọi ----------
++create or replace function public.vp_token()
++returns text language plpgsql stable security definer set search_path = public as $$
++declare h json;
++begin
++  begin
++    h := current_setting('request.headers', true)::json;
++  exception when others then
++    return null;
++  end;
++  return nullif(btrim(coalesce(h->>'x-user-token', '')), '');
++end $$;
++
++-- Trả về: 'admin' | 'bch' | 'ttbtv' | 'province' | 'office' | 'action100' | 'vpub' | 'data_entry' | null
++-- Quy tắc khớp với api/admin.js (CV nhập liệu -> data_entry; token CQ-* -> vpub/action100).
++create or replace function public.vp_scope()
++returns text language plpgsql stable security definer set search_path = public, extensions as $$
++declare
++  t text := public.vp_token();
++  v_name text;
++  v_scope text;
++begin
++  if t is null or length(t) > 200 then return null; end if;
++  if exists (select 1 from public.app_admins where token_sha256 = encode(extensions.digest(t, 'sha256'), 'hex')) then
++    return 'admin';
++  end if;
++  select o.name, o.s into v_name, v_scope from (
++    select name, 'bch'::text as s, 1 as ord from public.officers where token = t
++    union all select name, 'ttbtv', 2 from public.tt_btv_officers where token = t
++    union all select name, 'province', 3 from public.province_officers where token = t
++    union all select name, 'office', 4 from public.office_officers where token = t
++    union all select name, 'action100', 5 from public.action_100_days_officers where token = t
++  ) o order by o.ord limit 1;
++  if v_scope is null then return null; end if;
++  if btrim(coalesce(v_name, '')) = 'CV nhập liệu' then return 'data_entry'; end if;
++  if t like 'CQ-%' then
++    return case when btrim(coalesce(v_name, '')) = 'VPUB' then 'vpub' else 'action100' end;
++  end if;
++  return v_scope;
++end $$;
++
++grant execute on function public.vp_token() to anon, authenticated;
++grant execute on function public.vp_scope() to anon, authenticated;
++
++-- ---------- BƯỚC 4: xóa chính sách cũ (Phase 1: "anon được ghi") và bật RLS ----------
++do $$
++declare t text; pol record;
++begin
++  foreach t in array array['officers','tt_btv_officers','province_officers','office_officers','action_100_days_officers',
++                           'tasks', 'tt_btv_tasks', 'province_tasks', 'province_plan_blocks', 'action_100_days_tasks', 'vpub_tasks', 'office_tasks', 'department_tasks', 'mttq_kpi_people', 'mttq_kpi_catalog', 'mttq_kpi_tasks',
++                           'activity_logs','nq_tw'] loop
++    if to_regclass('public.' || t) is null then
++      raise notice 'Bỏ qua bảng không tồn tại: %', t;
++      continue;
++    end if;
++    execute format('alter table public.%I enable row level security', t);
++    for pol in select policyname from pg_policies where schemaname = 'public' and tablename = t loop
++      execute format('drop policy %I on public.%I', pol.policyname, t);
++    end loop;
++  end loop;
++end $$;
++
++-- ---------- BƯỚC 5: chính sách mới ----------
++create policy "p2a_tasks_all" on public.tasks for all to anon, authenticated
++  using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++create policy "p2a_tt_btv_tasks_all" on public.tt_btv_tasks for all to anon, authenticated
++  using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++create policy "p2a_province_tasks_all" on public.province_tasks for all to anon, authenticated
++  using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++create policy "p2a_province_plan_blocks_all" on public.province_plan_blocks for all to anon, authenticated
++  using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++create policy "p2a_action_100_days_tasks_all" on public.action_100_days_tasks for all to anon, authenticated
++  using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++create policy "p2a_vpub_tasks_all" on public.vpub_tasks for all to anon, authenticated
++  using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++create policy "p2a_office_tasks_all" on public.office_tasks for all to anon, authenticated
++  using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++create policy "p2a_department_tasks_all" on public.department_tasks for all to anon, authenticated
++  using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++create policy "p2a_mttq_kpi_people_all" on public.mttq_kpi_people for all to anon, authenticated
++  using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++create policy "p2a_mttq_kpi_catalog_all" on public.mttq_kpi_catalog for all to anon, authenticated
++  using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++create policy "p2a_mttq_kpi_tasks_all" on public.mttq_kpi_tasks for all to anon, authenticated
++  using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++
++-- Bảng cán bộ: ai có token hợp lệ được đọc (không gồm cột token); chỉ Admin được ghi
++create policy "p2a_officers_sel" on public.officers for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2a_officers_wr"  on public.officers for all    to anon, authenticated using ((select public.vp_scope()) = 'admin') with check ((select public.vp_scope()) = 'admin');
++create policy "p2a_tt_btv_officers_sel" on public.tt_btv_officers for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2a_tt_btv_officers_wr"  on public.tt_btv_officers for all    to anon, authenticated using ((select public.vp_scope()) = 'admin') with check ((select public.vp_scope()) = 'admin');
++create policy "p2a_province_officers_sel" on public.province_officers for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2a_province_officers_wr"  on public.province_officers for all    to anon, authenticated using ((select public.vp_scope()) = 'admin') with check ((select public.vp_scope()) = 'admin');
++create policy "p2a_office_officers_sel" on public.office_officers for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2a_office_officers_wr"  on public.office_officers for all    to anon, authenticated using ((select public.vp_scope()) = 'admin') with check ((select public.vp_scope()) = 'admin');
++create policy "p2a_action_100_days_officers_sel" on public.action_100_days_officers for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2a_action_100_days_officers_wr"  on public.action_100_days_officers for all    to anon, authenticated using ((select public.vp_scope()) = 'admin') with check ((select public.vp_scope()) = 'admin');
++
++-- Nhật ký: token hợp lệ được đọc/ghi thêm; chỉ Admin được xóa
++create policy "p2a_activity_sel" on public.activity_logs for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2a_activity_ins" on public.activity_logs for insert to anon, authenticated with check ((select public.vp_scope()) is not null);
++create policy "p2a_activity_del" on public.activity_logs for delete to anon, authenticated using ((select public.vp_scope()) = 'admin');
++
++-- nq_tw (nếu có)
++do $$
++begin
++  if to_regclass('public.nq_tw') is not null then
++    execute 'create policy "p2a_nq_tw_all" on public.nq_tw for all to anon, authenticated using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null)';
++  end if;
++end $$;
++
++-- ---------- BƯỚC 6: ẩn cột token khỏi trình duyệt ----------
++do $$
++declare t text; cols text;
++begin
++  foreach t in array array['officers','tt_btv_officers','province_officers','office_officers','action_100_days_officers'] loop
++    if to_regclass('public.' || t) is null then continue; end if;
++    select string_agg(quote_ident(column_name), ', ' order by ordinal_position) into cols
++      from information_schema.columns
++     where table_schema = 'public' and table_name = t and column_name <> 'token';
++    execute format('revoke select on public.%I from anon, authenticated', t);
++    execute format('grant select (%s) on public.%I to anon, authenticated', cols, t);
++  end loop;
++end $$;
++
++-- ---------- BƯỚC 7: kiểm tra ----------
++select tablename, rowsecurity from pg_tables
++ where schemaname = 'public' and tablename in ('officers','tt_btv_officers','province_officers','office_officers',
++   'action_100_days_officers','tasks','office_tasks','role_overrides','app_admins') order by tablename;
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/sql/rls-phase2b-scope-strict.sql repo/vanphongsomaua-main/sql/rls-phase2b-scope-strict.sql
+--- sql/rls-phase2b-scope-strict.sql	1970-01-01 00:00:00.000000000 +0000
++++ sql/rls-phase2b-scope-strict.sql	2026-10-03 06:42:00.539236977 +0000
+@@ -0,0 +1,82 @@
++-- ==========================================================================
++-- RLS PHASE 2B — siết quyền ghi theo từng workspace (khớp computeDefaultPerms + Set role)
++-- CHỈ CHẠY SAU KHI Phase 2A đã chạy ổn ít nhất vài ngày và đã kiểm tra bảng test trong README-RLS.md.
++--
++-- Quy tắc (giống giao diện):
++--   admin                       : toàn quyền
++--   cán bộ (CB-*) đúng workspace: thêm + sửa, KHÔNG xóa
++--   cơ quan (CQ-*) đúng workspace: chỉ sửa
++--   CV nhập liệu                : thêm + sửa ở TT/BTV
++--   role_overrides (Set role)   : cộng/trừ quyền v/a/e/d theo token, ưu tiên cao nhất
++-- Chưa siết (vẫn "token hợp lệ"): department_tasks, mttq_kpi_*, nq_tw — cần xác nhận ai được ghi.
++-- Không kiểm soát được ở mức dòng: cán bộ cùng workspace vẫn sửa được nhiệm vụ của nhau.
++-- ==========================================================================
++
++create or replace function public.vp_can(p_ws text, p_act text)
++returns boolean language plpgsql stable security definer set search_path = public as $$
++declare
++  t text := public.vp_token();
++  sc text := public.vp_scope();
++  base boolean := false;
++  ov text;
++begin
++  if sc is null then return false; end if;
++  if sc = 'admin' then return true; end if;
++  if sc = p_ws then
++    if t like 'CQ-%' then base := p_act in ('v', 'e');
++    else base := p_act in ('v', 'a', 'e');
++    end if;
++  elsif sc = 'data_entry' and p_ws = 'ttbtv' then
++    base := p_act in ('v', 'a', 'e');
++  end if;
++  select (r.perms -> p_ws ->> p_act) into ov from public.role_overrides r where r.token = t;
++  if ov in ('true', 'false') then return ov::boolean; end if;
++  return base;
++end $$;
++grant execute on function public.vp_can(text, text) to anon, authenticated;
++
++drop policy if exists "p2a_tasks_all" on public.tasks;
++create policy "p2b_tasks_sel" on public.tasks for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2b_tasks_ins" on public.tasks for insert to anon, authenticated with check ((select public.vp_can('bch', 'a')));
++create policy "p2b_tasks_upd" on public.tasks for update to anon, authenticated using ((select public.vp_can('bch', 'e'))) with check ((select public.vp_can('bch', 'e')));
++create policy "p2b_tasks_del" on public.tasks for delete to anon, authenticated using ((select public.vp_can('bch', 'd')));
++
++drop policy if exists "p2a_tt_btv_tasks_all" on public.tt_btv_tasks;
++create policy "p2b_tt_btv_tasks_sel" on public.tt_btv_tasks for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2b_tt_btv_tasks_ins" on public.tt_btv_tasks for insert to anon, authenticated with check ((select public.vp_can('ttbtv', 'a')));
++create policy "p2b_tt_btv_tasks_upd" on public.tt_btv_tasks for update to anon, authenticated using ((select public.vp_can('ttbtv', 'e'))) with check ((select public.vp_can('ttbtv', 'e')));
++create policy "p2b_tt_btv_tasks_del" on public.tt_btv_tasks for delete to anon, authenticated using ((select public.vp_can('ttbtv', 'd')));
++
++drop policy if exists "p2a_province_tasks_all" on public.province_tasks;
++create policy "p2b_province_tasks_sel" on public.province_tasks for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2b_province_tasks_ins" on public.province_tasks for insert to anon, authenticated with check ((select public.vp_can('province', 'a')));
++create policy "p2b_province_tasks_upd" on public.province_tasks for update to anon, authenticated using ((select public.vp_can('province', 'e'))) with check ((select public.vp_can('province', 'e')));
++create policy "p2b_province_tasks_del" on public.province_tasks for delete to anon, authenticated using ((select public.vp_can('province', 'd')));
++
++drop policy if exists "p2a_province_plan_blocks_all" on public.province_plan_blocks;
++create policy "p2b_province_plan_blocks_sel" on public.province_plan_blocks for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2b_province_plan_blocks_ins" on public.province_plan_blocks for insert to anon, authenticated with check ((select public.vp_can('province', 'a')));
++create policy "p2b_province_plan_blocks_upd" on public.province_plan_blocks for update to anon, authenticated using ((select public.vp_can('province', 'e'))) with check ((select public.vp_can('province', 'e')));
++create policy "p2b_province_plan_blocks_del" on public.province_plan_blocks for delete to anon, authenticated using ((select public.vp_can('province', 'd')));
++
++drop policy if exists "p2a_action_100_days_tasks_all" on public.action_100_days_tasks;
++create policy "p2b_action_100_days_tasks_sel" on public.action_100_days_tasks for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2b_action_100_days_tasks_ins" on public.action_100_days_tasks for insert to anon, authenticated with check ((select public.vp_can('action100', 'a')));
++create policy "p2b_action_100_days_tasks_upd" on public.action_100_days_tasks for update to anon, authenticated using ((select public.vp_can('action100', 'e'))) with check ((select public.vp_can('action100', 'e')));
++create policy "p2b_action_100_days_tasks_del" on public.action_100_days_tasks for delete to anon, authenticated using ((select public.vp_can('action100', 'd')));
++
++drop policy if exists "p2a_vpub_tasks_all" on public.vpub_tasks;
++create policy "p2b_vpub_tasks_sel" on public.vpub_tasks for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2b_vpub_tasks_ins" on public.vpub_tasks for insert to anon, authenticated with check ((select public.vp_can('vpub', 'a')));
++create policy "p2b_vpub_tasks_upd" on public.vpub_tasks for update to anon, authenticated using ((select public.vp_can('vpub', 'e'))) with check ((select public.vp_can('vpub', 'e')));
++create policy "p2b_vpub_tasks_del" on public.vpub_tasks for delete to anon, authenticated using ((select public.vp_can('vpub', 'd')));
++
++drop policy if exists "p2a_office_tasks_all" on public.office_tasks;
++create policy "p2b_office_tasks_sel" on public.office_tasks for select to anon, authenticated using ((select public.vp_scope()) is not null);
++create policy "p2b_office_tasks_ins" on public.office_tasks for insert to anon, authenticated with check ((select public.vp_can('office', 'a')));
++create policy "p2b_office_tasks_upd" on public.office_tasks for update to anon, authenticated using ((select public.vp_can('office', 'e'))) with check ((select public.vp_can('office', 'e')));
++create policy "p2b_office_tasks_del" on public.office_tasks for delete to anon, authenticated using ((select public.vp_can('office', 'd')));
++
++-- Nhật ký chỉ Admin được đọc (giao diện chỉ Admin xem)
++drop policy if exists "p2a_activity_sel" on public.activity_logs;
++create policy "p2b_activity_sel" on public.activity_logs for select to anon, authenticated using ((select public.vp_scope()) = 'admin');
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/sql/rls-rollback.sql repo/vanphongsomaua-main/sql/rls-rollback.sql
+--- sql/rls-rollback.sql	1970-01-01 00:00:00.000000000 +0000
++++ sql/rls-rollback.sql	2026-10-03 06:42:00.539271844 +0000
+@@ -0,0 +1,59 @@
++-- ==========================================================================
++-- ROLLBACK RLS — chỉ dùng khi sự cố. Đọc kỹ phần nào cần chạy.
++-- ==========================================================================
++
++-- ---------- A. Từ Phase 2B quay về Phase 2A (vẫn bắt buộc token hợp lệ) ----------
++drop policy if exists "p2b_tasks_sel" on public.tasks;
++drop policy if exists "p2b_tasks_ins" on public.tasks;
++drop policy if exists "p2b_tasks_upd" on public.tasks;
++drop policy if exists "p2b_tasks_del" on public.tasks;
++create policy "p2a_tasks_all" on public.tasks for all to anon, authenticated using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++drop policy if exists "p2b_tt_btv_tasks_sel" on public.tt_btv_tasks;
++drop policy if exists "p2b_tt_btv_tasks_ins" on public.tt_btv_tasks;
++drop policy if exists "p2b_tt_btv_tasks_upd" on public.tt_btv_tasks;
++drop policy if exists "p2b_tt_btv_tasks_del" on public.tt_btv_tasks;
++create policy "p2a_tt_btv_tasks_all" on public.tt_btv_tasks for all to anon, authenticated using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++drop policy if exists "p2b_province_tasks_sel" on public.province_tasks;
++drop policy if exists "p2b_province_tasks_ins" on public.province_tasks;
++drop policy if exists "p2b_province_tasks_upd" on public.province_tasks;
++drop policy if exists "p2b_province_tasks_del" on public.province_tasks;
++create policy "p2a_province_tasks_all" on public.province_tasks for all to anon, authenticated using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++drop policy if exists "p2b_province_plan_blocks_sel" on public.province_plan_blocks;
++drop policy if exists "p2b_province_plan_blocks_ins" on public.province_plan_blocks;
++drop policy if exists "p2b_province_plan_blocks_upd" on public.province_plan_blocks;
++drop policy if exists "p2b_province_plan_blocks_del" on public.province_plan_blocks;
++create policy "p2a_province_plan_blocks_all" on public.province_plan_blocks for all to anon, authenticated using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++drop policy if exists "p2b_action_100_days_tasks_sel" on public.action_100_days_tasks;
++drop policy if exists "p2b_action_100_days_tasks_ins" on public.action_100_days_tasks;
++drop policy if exists "p2b_action_100_days_tasks_upd" on public.action_100_days_tasks;
++drop policy if exists "p2b_action_100_days_tasks_del" on public.action_100_days_tasks;
++create policy "p2a_action_100_days_tasks_all" on public.action_100_days_tasks for all to anon, authenticated using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++drop policy if exists "p2b_vpub_tasks_sel" on public.vpub_tasks;
++drop policy if exists "p2b_vpub_tasks_ins" on public.vpub_tasks;
++drop policy if exists "p2b_vpub_tasks_upd" on public.vpub_tasks;
++drop policy if exists "p2b_vpub_tasks_del" on public.vpub_tasks;
++create policy "p2a_vpub_tasks_all" on public.vpub_tasks for all to anon, authenticated using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++drop policy if exists "p2b_office_tasks_sel" on public.office_tasks;
++drop policy if exists "p2b_office_tasks_ins" on public.office_tasks;
++drop policy if exists "p2b_office_tasks_upd" on public.office_tasks;
++drop policy if exists "p2b_office_tasks_del" on public.office_tasks;
++create policy "p2a_office_tasks_all" on public.office_tasks for all to anon, authenticated using ((select public.vp_scope()) is not null) with check ((select public.vp_scope()) is not null);
++drop policy if exists "p2b_activity_sel" on public.activity_logs;
++create policy "p2a_activity_sel" on public.activity_logs for select to anon, authenticated using ((select public.vp_scope()) is not null);
++
++-- ---------- B. KHẨN CẤP: về lại Phase 1 (ai có khóa anon cũng ghi được — KHÔNG an toàn) ----------
++-- Chỉ chạy nếu ứng dụng không dùng được và cần khôi phục dịch vụ ngay. Sau đó phải xử lý nguyên nhân và chạy lại 2A.
++-- do $$
++-- declare t text; pol record;
++-- begin
++--   foreach t in array array['officers','tt_btv_officers','province_officers','office_officers','action_100_days_officers',
++--     'tasks','tt_btv_tasks','province_tasks','province_plan_blocks','action_100_days_tasks','vpub_tasks','office_tasks',
++--     'department_tasks','mttq_kpi_people','mttq_kpi_catalog','mttq_kpi_tasks','activity_logs'] loop
++--     for pol in select policyname from pg_policies where schemaname='public' and tablename=t loop
++--       execute format('drop policy %I on public.%I', pol.policyname, t);
++--     end loop;
++--     execute format('create policy %I on public.%I for select using (true)', 'rls_'||t||'_select', t);
++--     execute format('create policy %I on public.%I for all using (auth.role() = ''anon'')', 'rls_'||t||'_anon_write', t);
++--     execute format('grant select on public.%I to anon, authenticated', t);
++--   end loop;
++-- end $$;
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/sql/rls-setup.sql repo/vanphongsomaua-main/sql/rls-setup.sql
+--- sql/rls-setup.sql	2026-10-03 06:37:43.654714670 +0000
++++ sql/rls-setup.sql	2026-10-03 06:42:30.660321747 +0000
+@@ -1,3 +1,8 @@
++-- !!! KHÔNG CHẠY LẠI TỆP NÀY !!!
++-- Đây là Phase 1: cho phép mọi người có khóa anon đọc và GHI toàn bộ dữ liệu.
++-- Đã được thay bằng sql/rls-phase2a-token-required.sql và sql/rls-phase2b-scope-strict.sql.
++-- Giữ lại để tham khảo lịch sử.
++
+ -- ==========================================================================
+ -- RLS SETUP - Văn phòng số Mậu A
+ -- Chạy trong Supabase Dashboard → SQL Editor
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/supabase/functions/secure-write/deno.json repo/vanphongsomaua-main/supabase/functions/secure-write/deno.json
+--- supabase/functions/secure-write/deno.json	2026-10-03 06:37:43.654890271 +0000
++++ supabase/functions/secure-write/deno.json	1970-01-01 00:00:00.000000000 +0000
+@@ -1,6 +0,0 @@
+-{
+-  "imports": {
+-    "https://deno.land/std@0.168.0/http/server.ts": "https://deno.land/std@0.168.0/http/server.ts",
+-    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2"
+-  }
+-}
+\ No newline at end of file
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/supabase/functions/secure-write/index.ts repo/vanphongsomaua-main/supabase/functions/secure-write/index.ts
+--- supabase/functions/secure-write/index.ts	2026-10-03 06:37:43.654900064 +0000
++++ supabase/functions/secure-write/index.ts	1970-01-01 00:00:00.000000000 +0000
+@@ -1,126 +0,0 @@
+-// ==========================================================================
+-// Supabase Edge Function: Secure Write Proxy
+-// Thay thế direct Supabase REST API calls cho INSERT/UPDATE/DELETE
+-// Deploy: supabase functions deploy secure-write
+-// ==========================================================================
+-
+-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+-
+-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+-
+-serve(async (req) => {
+-  // CORS headers
+-  const headers = {
+-    "Access-Control-Allow-Origin": "*",
+-    "Access-Control-Allow-Headers": "authorization, x-user-token, content-type",
+-    "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+-  };
+-
+-  if (req.method === "OPTIONS") {
+-    return new Response("ok", { headers });
+-  }
+-
+-  try {
+-    // ==========================================
+-    // BƯỚC 1: XÁC THỰC TOKEN
+-    // ==========================================
+-    const userToken = req.headers.get("x-user-token");
+-    if (!userToken || !userToken.startsWith("CB-MAUA-") && !userToken.startsWith("CQ-MAUA-")) {
+-      return new Response(JSON.stringify({ error: "Thiếu hoặc sai token" }), {
+-        status: 401,
+-        headers: { ...headers, "Content-Type": "application/json" },
+-      });
+-    }
+-
+-    // ==========================================
+-    // BƯỚC 2: PARSE REQUEST
+-    // ==========================================
+-    const { table, method, data, id } = await req.json();
+-
+-    if (!table || !method) {
+-      return new Response(JSON.stringify({ error: "Thiếu table hoặc method" }), {
+-        status: 400,
+-        headers: { ...headers, "Content-Type": "application/json" },
+-      });
+-    }
+-
+-    // ==========================================
+-    // BƯỚC 3: EXECUTE VIA SERVICE_ROLE (bypass RLS)
+-    // ==========================================
+-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+-      auth: { autoRefreshToken: false, persistSession: false },
+-    });
+-
+-    let result;
+-
+-    switch (method.toUpperCase()) {
+-      case "GET": {
+-        let query = supabase.from(table).select("*");
+-        if (id) query = query.eq("id", id);
+-        const { data: rows, error } = await query;
+-        if (error) throw error;
+-        result = { ok: true, data: rows };
+-        break;
+-      }
+-
+-      case "POST": {
+-        const { data: inserted, error } = await supabase
+-          .from(table)
+-          .insert(data)
+-          .select()
+-          .single();
+-        if (error) throw error;
+-        result = { ok: true, data: inserted };
+-        break;
+-      }
+-
+-      case "PATCH": {
+-        if (!id) throw new Error("Thiếu id cho PATCH");
+-        const { data: updated, error } = await supabase
+-          .from(table)
+-          .update(data)
+-          .eq("id", id)
+-          .select()
+-          .single();
+-        if (error) throw error;
+-        result = { ok: true, data: updated };
+-        break;
+-      }
+-
+-      case "DELETE": {
+-        if (!id) throw new Error("Thiếu id cho DELETE");
+-        const { error } = await supabase.from(table).delete().eq("id", id);
+-        if (error) throw error;
+-        result = { ok: true, data: null };
+-        break;
+-      }
+-
+-      default:
+-        throw new Error(`Method không hỗ trợ: ${method}`);
+-    }
+-
+-    // ==========================================
+-    // BƯỚC 4: LOG ACTIVITY
+-    // ==========================================
+-    await supabase.from("activity_logs").insert({
+-      action: method.toUpperCase(),
+-      table_name: table,
+-      row_id: id || "bulk",
+-      token_hash: userToken.substring(0, 8) + "...",
+-      created_at: new Date().toISOString(),
+-    });
+-
+-    return new Response(JSON.stringify(result), {
+-      status: 200,
+-      headers: { ...headers, "Content-Type": "application/json" },
+-    });
+-
+-  } catch (error) {
+-    return new Response(JSON.stringify({ error: error.message }), {
+-      status: 500,
+-      headers: { "Content-Type": "application/json" },
+-    });
+-  }
+-});
+\ No newline at end of file
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/supabase/functions/send-email/index.ts repo/vanphongsomaua-main/supabase/functions/send-email/index.ts
+--- supabase/functions/send-email/index.ts	2026-10-03 06:37:43.654968364 +0000
++++ supabase/functions/send-email/index.ts	2026-10-03 06:40:58.901722004 +0000
+@@ -1,40 +1,106 @@
++// Edge Function: gửi thông báo nhiệm vụ sắp đến hạn
++//
++// Secrets cần đặt (supabase secrets set ...):
++//   RESEND_API_KEY   khóa Resend
++//   ADMIN_TOKEN      cùng giá trị với ADMIN_TOKEN trên Vercel
++//   MAIL_FROM        người gửi đã xác minh miền trên Resend, ví dụ: "Văn phòng số Mậu A <thongbao@ten-mien-cua-ban.vn>"
++//   ALLOWED_ORIGINS  (tùy chọn) danh sách origin được phép, cách nhau bằng dấu phẩy
++// SUPABASE_URL và SUPABASE_SERVICE_ROLE_KEY do Supabase tự cấp cho Edge Function.
++//
++// Chỉ Admin hoặc cán bộ Văn phòng (office_officers) có token hợp lệ mới được gửi.
++
+ import { Resend } from "npm:resend@4.0.0";
+ 
+ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
++const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
++const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
++const ADMIN_TOKEN = Deno.env.get("ADMIN_TOKEN") ?? "";
++const MAIL_FROM = Deno.env.get("MAIL_FROM") ?? "Văn phòng số Mậu A <onboarding@resend.dev>";
++const ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
++
+ const allowedOrigin = (origin: string | null) => {
+   if (!origin) return "";
+-  try {
+-    return new URL(origin).hostname.endsWith(".vercel.app") ? origin : "";
+-  } catch {
+-    return "";
+-  }
++  if (ORIGINS.length) return ORIGINS.includes(origin) ? origin : "";
++  try { return new URL(origin).hostname.endsWith(".vercel.app") ? origin : ""; } catch { return ""; }
+ };
+ const corsHeaders = (origin: string | null): Record<string, string> => ({
+   "Access-Control-Allow-Origin": allowedOrigin(origin),
+-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
++  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-user-token",
+   "Access-Control-Allow-Methods": "POST, OPTIONS",
+   "Vary": "Origin",
+ });
+-const escapeHtml = (value: unknown) => String(value ?? "")
++const escapeHtml = (v: unknown) => String(v ?? "")
+   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+   .replaceAll('"', "&quot;").replaceAll("'", "&#39;");
++const clean = (v: unknown, max: number) => String(v ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, max);
++
++async function sha256(s: string) {
++  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
++  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
++}
++async function safeEqual(a: string, b: string) { return (await sha256(a)) === (await sha256(b)); }
++
++async function mayJustSend(token: string): Promise<boolean> {
++  if (!token || token.length > 200) return false;
++  if (ADMIN_TOKEN.length >= 16 && await safeEqual(token, ADMIN_TOKEN)) return true;
++  if (!SUPABASE_URL || !SERVICE_KEY) return false;
++  const r = await fetch(`${SUPABASE_URL}/rest/v1/office_officers?select=id&token=eq.${encodeURIComponent(token)}&limit=1`, {
++    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
++  });
++  if (!r.ok) return false;
++  const rows = await r.json();
++  return Array.isArray(rows) && rows.length > 0;
++}
++
++// Giới hạn tần suất theo token (best-effort, trong bộ nhớ instance)
++const SENT = new Map<string, number[]>();
++function overLimit(token: string) {
++  const now = Date.now();
++  const arr = (SENT.get(token) ?? []).filter((t) => now - t < 60 * 60 * 1000);
++  if (arr.length >= 60) { SENT.set(token, arr); return true; }
++  arr.push(now); SENT.set(token, arr);
++  if (SENT.size > 2000) SENT.clear();
++  return false;
++}
+ 
+ Deno.serve(async (request) => {
+   const origin = request.headers.get("origin");
+   const headers = { ...corsHeaders(origin), "Content-Type": "application/json" };
++  const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers });
++
+   if (request.method === "OPTIONS") return new Response("ok", { headers });
+-  if (request.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers });
+-  if (origin && !allowedOrigin(origin)) return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers });
++  if (request.method !== "POST") return reply(405, { error: "Method not allowed" });
++  if (origin && !allowedOrigin(origin)) return reply(403, { error: "Origin not allowed" });
+ 
+   try {
++    const token = (request.headers.get("x-user-token") ?? "").trim();
++    if (!(await mayJustSend(token))) return reply(401, { error: "Không có quyền gửi thông báo." });
++    if (overLimit(token)) return reply(429, { error: "Đã gửi quá nhiều thông báo trong 1 giờ." });
++
+     const body = await request.json();
+-    const { to_email, task_name, owner, deadline, attachment_link, admin_note } = body;
+-    if (!to_email || !task_name) return new Response(JSON.stringify({ error: "to_email and task_name are required" }), { status: 400, headers });
+-    const html = `<h2>Thông báo nhiệm vụ sắp đến hạn</h2><p><b>Nhiệm vụ:</b> ${escapeHtml(task_name)}</p><p><b>Người phụ trách:</b> ${escapeHtml(owner)}</p><p><b>Hạn hoàn thành:</b> ${escapeHtml(deadline)}</p>${admin_note ? `<p><b>Ghi chú Admin:</b> ${escapeHtml(admin_note)}</p>` : ""}${attachment_link ? `<p><a href="${escapeHtml(attachment_link)}">Xem tệp đính kèm</a></p>` : ""}`;
+-    const result = await resend.emails.send({ from: "Văn phòng số Mậu A <lyminhtl@gmail.com>", to: [to_email], subject: `Nhiệm vụ sắp đến hạn: ${task_name}`, html });
++    const to = clean(body.to_email, 254);
++    const taskName = clean(body.task_name, 300);
++    if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(to)) return reply(400, { error: "Email người nhận không hợp lệ." });
++    if (!taskName) return reply(400, { error: "Thiếu tên nhiệm vụ." });
++
++    const owner = clean(body.owner, 200);
++    const deadline = clean(body.deadline, 40);
++    const note = clean(body.admin_note, 1000);
++    const link = clean(body.attachment_link, 1000);
++    const safeLink = /^https:\/\//i.test(link) ? link : "";
++
++    const html = `<h2>Thông báo nhiệm vụ sắp đến hạn</h2>` +
++      `<p><b>Nhiệm vụ:</b> ${escapeHtml(taskName)}</p>` +
++      `<p><b>Người phụ trách:</b> ${escapeHtml(owner)}</p>` +
++      `<p><b>Hạn hoàn thành:</b> ${escapeHtml(deadline)}</p>` +
++      (note ? `<p><b>Ghi chú Admin:</b> ${escapeHtml(note)}</p>` : "") +
++      (safeLink ? `<p><a href="${escapeHtml(safeLink)}">Xem tệp đính kèm</a></p>` : "");
++
++    const result = await resend.emails.send({ from: MAIL_FROM, to: [to], subject: `Nhiệm vụ sắp đến hạn: ${taskName}`, html });
+     if (result.error) throw new Error(result.error.message);
+-    return new Response(JSON.stringify({ ok: true, id: result.data?.id }), { headers });
++    return reply(200, { ok: true, id: result.data?.id });
+   } catch (error) {
+-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Email send failed" }), { status: 500, headers });
++    console.error("send-email:", error);
++    return reply(500, { error: "Không gửi được email." });
+   }
+-});
+\ No newline at end of file
++});
+diff -ruN -x node_modules -x 'backup-*' -x '*.bak' -x legacy_old.js -x supabase_seed_tokens.sql -x 'TEST_*REPORT.md' -x '*.docx' orig/vercel.json repo/vanphongsomaua-main/vercel.json
+--- vercel.json	2026-10-03 06:37:43.654345451 +0000
++++ vercel.json	2026-10-03 06:44:48.674909071 +0000
+@@ -2,31 +2,87 @@
+   "headers": [
+     {
+       "source": "/",
+-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
++      "headers": [
++        {
++          "key": "Cache-Control",
++          "value": "public, max-age=0, must-revalidate"
++        }
++      ]
+     },
+     {
+       "source": "/index.html",
+-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
++      "headers": [
++        {
++          "key": "Cache-Control",
++          "value": "public, max-age=0, must-revalidate"
++        }
++      ]
+     },
+     {
+       "source": "/mobile",
+-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
++      "headers": [
++        {
++          "key": "Cache-Control",
++          "value": "public, max-age=0, must-revalidate"
++        }
++      ]
+     },
+     {
+       "source": "/mobile/:path*",
+-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
++      "headers": [
++        {
++          "key": "Cache-Control",
++          "value": "public, max-age=0, must-revalidate"
++        }
++      ]
+     },
+     {
+       "source": "/js/:path*",
+-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
++      "headers": [
++        {
++          "key": "Cache-Control",
++          "value": "public, max-age=0, must-revalidate"
++        }
++      ]
+     },
+     {
+       "source": "/css/:path*",
+-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
++      "headers": [
++        {
++          "key": "Cache-Control",
++          "value": "public, max-age=0, must-revalidate"
++        }
++      ]
+     },
+     {
+       "source": "/sw.js",
+-      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
++      "headers": [
++        {
++          "key": "Cache-Control",
++          "value": "no-store"
++        }
++      ]
++    },
++    {
++      "source": "/(.*)",
++      "headers": [
++        {
++          "key": "X-Content-Type-Options",
++          "value": "nosniff"
++        },
++        {
++          "key": "X-Frame-Options",
++          "value": "DENY"
++        },
++        {
++          "key": "Referrer-Policy",
++          "value": "strict-origin-when-cross-origin"
++        },
++        {
++          "key": "Permissions-Policy",
++          "value": "camera=(), microphone=(), geolocation=()"
++        }
++      ]
+     }
+   ]
+ }
